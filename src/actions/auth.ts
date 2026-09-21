@@ -42,11 +42,15 @@ export async function registerAction(formData: unknown) {
     await setAuthCookie(token);
 
     return { success: true, role: newUser.role };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Registration error:', error);
-    return { 
-      success: false, 
-      error: error?.message || 'Failed to create account. Please try again.' 
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Failed to create account. Please try again.';
+    return {
+      success: false,
+      error: message,
     };
   }
 }
@@ -82,11 +86,15 @@ export async function loginAction(formData: unknown) {
     await setAuthCookie(token);
 
     return { success: true, role: user.role };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Login error:', error);
-    return { 
-      success: false, 
-      error: error?.message || 'Failed to login. Please try again.' 
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Failed to login. Please try again.';
+    return {
+      success: false,
+      error: message,
     };
   }
 }
