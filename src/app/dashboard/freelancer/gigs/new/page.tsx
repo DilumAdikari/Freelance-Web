@@ -48,14 +48,14 @@ export default function NewGigPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-2xl bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-        <div className="flex items-center justify-between mb-6 pb-4 border-b">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Create a New Gig</h1>
             <p className="text-sm text-gray-500">List your professional service for clients</p>
           </div>
           <Link
             href="/dashboard/freelancer"
-            className="text-sm text-gray-600 hover:text-gray-900"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900"
           >
             Cancel
           </Link>
@@ -69,27 +69,29 @@ export default function NewGigPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Gig Title</label>
+            <label className="block text-sm font-medium text-gray-900">Gig Title</label>
             <input
               type="text"
               name="title"
               placeholder="e.g. I will build a full-stack web application in Next.js"
               required
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none"
+              className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Category</label>
+            <label className="block text-sm font-medium text-gray-900">Category</label>
             <select
               name="category"
               required
               defaultValue=""
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none"
+              className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
             >
-              <option value="" disabled>Select category</option>
+              <option value="" disabled className="text-gray-400">
+                Select category
+              </option>
               {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
+                <option key={cat} value={cat} className="text-gray-900">
                   {cat}
                 </option>
               ))}
@@ -97,49 +99,49 @@ export default function NewGigPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Description</label>
+            <label className="block text-sm font-medium text-gray-900">Description</label>
             <textarea
               name="description"
               rows={5}
               placeholder="Describe what services you offer, technologies used, and what clients will get..."
               required
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none"
+              className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
             />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Starting Price ($ USD)</label>
+              <label className="block text-sm font-medium text-gray-900">Starting Price ($ USD)</label>
               <input
                 type="number"
                 name="price"
                 min="5"
                 defaultValue="20"
                 required
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none"
+                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Delivery Time (Days)</label>
+              <label className="block text-sm font-medium text-gray-900">Delivery Time (Days)</label>
               <input
                 type="number"
                 name="deliveryTimeDays"
                 min="1"
                 defaultValue="3"
                 required
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none"
+                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Cover Image URL (Optional)</label>
+            <label className="block text-sm font-medium text-gray-900">Cover Image URL (Optional)</label>
             <input
               type="url"
               name="coverImage"
               placeholder="https://images.unsplash.com/..."
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none"
+              className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
             />
           </div>
 
