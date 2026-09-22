@@ -1,68 +1,153 @@
-import Image from "next/image";
+import Link from 'next/link';
+import Image from 'next/image';
+import { connectDB } from '@/lib/mongodb';
+import { Gig } from '@/models/Gig';
+// User model එක register වීම සඳහා මෙහි import කරන්න
+import '@/models/User';
 
-export default function Home() {
+interface IGigItem {
+  _id: string;
+  title: string;
+  category: string;
+  description: string;
+  price: number;
+  deliveryTimeDays: number;
+  coverImage?: string;
+  freelancerId: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+}
+
+async function getFeaturedGigs(): Promise<IGigItem[]> {
+  try {
+    await connectDB();
+    const gigs = await Gig.find({})
+      .populate('freelancerId', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(8)
+      .lean();
+
+    return JSON.parse(JSON.stringify(gigs));
+  } catch (error) {
+    console.error('Failed to fetch gigs:', error);
+    return [];
+  }
+}
+
+export default async function HomePage() {
+  const gigs = await getFeaturedGigs();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      {/* Navigation Bar */}
+      <header className="border-b bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <Link href="/" className="text-2xl font-black tracking-tight text-black">
+            Freelance<span className="text-blue-600">Hub</span>
+          </Link>
+
+          <div className="flex items-center gap-4">
+            <Link
+              href="/login"
+              className="text-sm font-medium text-gray-700 hover:text-black"
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+            >
+              Join
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="border-b border-gray-100 bg-white px-4 py-16 text-center sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl">
+          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
+            Find the right freelance services for your business
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-4 text-lg text-gray-600">
+            Browse top-quality services offered by verified talent worldwide.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      {/* Gigs List Section */}
+      <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Popular Services</h2>
+            <p className="text-sm text-gray-500">Most recently published gigs</p>
+          </div>
         </div>
+
+        {gigs.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center">
+            <p className="text-gray-500">තවමත් කිසිදු Gig එකක් පළ කර නොමැත.</p>
+            <Link
+              href="/dashboard/freelancer/gigs/new"
+              className="mt-4 inline-block text-sm font-medium text-blue-600 hover:underline"
+            >
+              අලුත් Gig එකක් පළ කරන්න &rarr;
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {gigs.map((gig) => (
+              <div
+                key={gig._id}
+                className="group flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md"
+              >
+                {/* Gig Cover Image */}
+                <div className="relative h-44 w-full bg-gray-100">
+                  {gig.coverImage ? (
+                    <Image
+                      src={gig.coverImage}
+                      alt={gig.title}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 25vw"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-400">
+                      No Image Provided
+                    </div>
+                  )}
+                </div>
+
+                {/* Gig Details */}
+                <div className="flex flex-1 flex-col p-4">
+                  <div className="mb-2 flex items-center justify-between text-xs text-gray-500">
+                    <span className="font-semibold text-blue-600">{gig.category}</span>
+                    <span>{gig.deliveryTimeDays} days delivery</span>
+                  </div>
+
+                  <h3 className="line-clamp-2 text-sm font-medium text-gray-900 group-hover:text-blue-600">
+                    {gig.title}
+                  </h3>
+
+                  <p className="mt-2 line-clamp-2 flex-1 text-xs text-gray-500">
+                    {gig.description}
+                  </p>
+
+                  <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
+                    <span className="text-xs text-gray-500">
+                      By {gig.freelancerId?.name || 'Freelancer'}
+                    </span>
+                    <span className="text-sm font-bold text-gray-900">
+                      ${gig.price}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );
