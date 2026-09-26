@@ -37,5 +37,5 @@ jobs:
       - name: Run Production Build
         run: npm run build
         env:
-          MONGODB_URI: "mongodb://localhost:27017/test_db"
-          JWT_SECRET: "ci_temporary_test_secret_key"
+          MONGODB_URI: "mongodb://Admin:200431001370@ac-0sooljd-shard-00-00.yvrefxj.mongodb.net:27017,ac-0sooljd-shard-00-01.yvrefxj.mongodb.net:27017,ac-0sooljd-shard-00-02.yvrefxj.mongodb.net:27017/Freelance-DB?ssl=true&replicaSet=atlas-4rloqf-shard-0&authSource=admin&appName=Cluster0"
+          JWT_SECRET: "68ef54cfc83263f8594516fca8573db89895a79492c91084ea99da8af605a7fc"

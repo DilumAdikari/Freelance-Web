@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { connectDB } from '@/lib/mongodb';
 import { Gig } from '@/models/Gig';
 import '@/models/User';
@@ -35,7 +36,7 @@ async function getFeaturedGigs(query?: string, category?: string): Promise<IGigI
     const gigs = await Gig.find(filter)
       .populate('freelancerId', 'name email')
       .sort({ createdAt: -1 })
-      .limit(12)
+      .limit(16)
       .lean();
 
     return JSON.parse(JSON.stringify(gigs));
@@ -49,15 +50,62 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const { query, category } = await searchParams;
   const gigs = await getFeaturedGigs(query, category);
 
+  
+  const cookieStore = await cookies();
+  const token =
+    cookieStore.get('token')?.value ||
+    cookieStore.get('next-auth.session-token')?.value ||
+    cookieStore.get('__Secure-next-auth.session-token')?.value;
+
+  
+  const isLoggedIn = Boolean(token);
+
   return (
     <div className="min-h-screen bg-[#f9fafb] text-black antialiased">
-      <Navbar />
-      <HeroSection query={query} category={category} />
-      <CategoryGrid />
-      <ValueProposition />
+      
+      <Navbar isLoggedIn={isLoggedIn} />
 
-      {/* Main Gigs Listing */}
-      <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+      
+      {!isLoggedIn && <HeroSection query={query} category={category} />}
+
+      
+      {isLoggedIn && (
+        <section className="border-b border-gray-200 bg-white py-8 px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <h1 className="text-2xl font-black text-black sm:text-3xl">
+              Explore Services on Vision<span style={{ color: '#178f23' }}>LK</span>
+            </h1>
+            <p className="mt-1 text-xs text-gray-500">
+              Browse top verified talents and services ready for immediate order.
+            </p>
+
+            <form method="GET" action="/" className="mt-5 flex max-w-2xl items-center gap-2">
+              <input
+                type="text"
+                name="query"
+                defaultValue={query || ''}
+                placeholder="What service are you looking for today?"
+                className="block w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-black placeholder:text-gray-400 focus:border-black focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="rounded-xl bg-black px-6 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-gray-800"
+              >
+                Search
+              </button>
+            </form>
+          </div>
+        </section>
+      )}
+
+      
+      <CategoryGrid />
+
+      
+      {!isLoggedIn && <ValueProposition />}
+
+      
+      <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-8 flex items-center justify-between border-b border-gray-200 pb-4">
           <div>
             <h2 className="text-2xl font-bold tracking-tight text-black">
@@ -94,7 +142,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         )}
       </main>
 
-      <FreelancerCTA />
+     
+      {!isLoggedIn && <FreelancerCTA />}
+
       <Footer />
     </div>
   );
