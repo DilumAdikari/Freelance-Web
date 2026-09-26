@@ -186,7 +186,7 @@ export default function RegisterPage() {
                     name="name"
                     type="text"
                     required
-                    placeholder="Dilum Adikari"
+                    placeholder="Full Name"
                     className="block w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-black placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black transition"
                   />
                 </div>
