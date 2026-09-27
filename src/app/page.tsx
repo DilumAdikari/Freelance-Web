@@ -10,6 +10,7 @@ import CategoryGrid from '@/components/CategoryGrid';
 import ValueProposition from '@/components/ValueProposition';
 import GigCard, { IGigItem } from '@/components/GigCard';
 import FreelancerCTA from '@/components/FreelancerCTA';
+export const dynamic = 'force-dynamic'; // Ensure the page is always rendered on the server to fetch the latest data
 import Footer from '@/components/Footer';
 
 interface HomePageProps {
@@ -52,7 +53,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   
   const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
+  const token = cookieStore.get('auth_token')?.value;
   
   const isLoggedIn = Boolean(token);
 
