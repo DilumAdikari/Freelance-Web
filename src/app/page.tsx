@@ -5,13 +5,16 @@ import { Gig } from '@/models/Gig';
 import '@/models/User';
 
 import Navbar from '@/components/Navbar';
+import CategoryNavbar from '@/components/CategoryNavbar';
 import HeroSection from '@/components/HeroSection';
 import CategoryGrid from '@/components/CategoryGrid';
 import ValueProposition from '@/components/ValueProposition';
 import GigCard, { IGigItem } from '@/components/GigCard';
 import FreelancerCTA from '@/components/FreelancerCTA';
-export const dynamic = 'force-dynamic'; // Ensure the page is always rendered on the server to fetch the latest data
 import Footer from '@/components/Footer';
+
+// Server rendering aur fresh data fetching ensure karne ke liye
+export const dynamic = 'force-dynamic';
 
 interface HomePageProps {
   searchParams: Promise<{ query?: string; category?: string }>;
@@ -51,21 +54,23 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const { query, category } = await searchParams;
   const gigs = await getFeaturedGigs(query, category);
 
-  
+  // Cookie se authentication status verify karna
   const cookieStore = await cookies();
   const token = cookieStore.get('auth_token')?.value;
-  
-  const isLoggedIn = Boolean(token);
+  const isLoggedIn = Boolean(token && token.trim().length > 0);
 
   return (
     <div className="min-h-screen bg-[#f9fafb] text-black antialiased">
-      
+      {/* Primary Navigation Bar */}
       <Navbar isLoggedIn={isLoggedIn} />
 
-      
+      {/* Categories Sub-navigation Bar */}
+      <CategoryNavbar />
+
+      {/* Guest Users ke liye Hero Section */}
       {!isLoggedIn && <HeroSection query={query} category={category} />}
 
-      
+      {/* Logged-in Users ke liye Search Bar Section */}
       {isLoggedIn && (
         <section className="border-b border-gray-200 bg-white py-8 px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
@@ -95,13 +100,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </section>
       )}
 
-      
+      {/* Visual Category Grid */}
       <CategoryGrid />
 
-      
+      {/* Value Proposition for Guests */}
       {!isLoggedIn && <ValueProposition />}
 
-      
+      {/* Marketplace Gig Cards Grid */}
       <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-8 flex items-center justify-between border-b border-gray-200 pb-4">
           <div>
@@ -121,7 +126,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         {gigs.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-12 text-center">
             <p className="text-base text-gray-600">No matching services were found.</p>
-            <p className="mt-1 text-sm text-gray-400">Try adjusting your search terms or category filter.</p>
+            <p className="mt-1 text-sm text-gray-400">
+              Try adjusting your search terms or category filter.
+            </p>
             <Link
               href="/"
               className="mt-5 inline-block text-sm font-semibold hover:underline"
@@ -139,7 +146,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         )}
       </main>
 
-     
+      {/* Freelancer CTA for Guests */}
       {!isLoggedIn && <FreelancerCTA />}
 
       <Footer />
