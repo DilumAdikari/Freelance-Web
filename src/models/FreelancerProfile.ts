@@ -34,7 +34,7 @@ const FreelancerProfileSchema = new Schema<IFreelancerProfile>(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
-      unique: true, // එක් User කෙනෙකුට තනි Profile එකක් පමණක් හිමිවේ
+      unique: true, 
     },
     headline: {
       type: String,
