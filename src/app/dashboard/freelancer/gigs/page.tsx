@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
 import { connectDB } from '@/lib/mongodb';
 import { Gig } from '@/models/Gig';
 import '@/models/User';
@@ -14,11 +16,29 @@ interface IGigItem {
   createdAt: string;
 }
 
-async function getFreelancerGigs(userId?: string): Promise<IGigItem[]> {
+
+async function getFreelancerGigs(): Promise<IGigItem[]> {
   try {
     await connectDB();
 
-    const filter = userId ? { freelancerId: userId } : {};
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+
+    let filter = {};
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+        if (decoded?.userId) {
+         
+          filter = {
+            $or: [{ userId: decoded.userId }, { freelancerId: decoded.userId }],
+          };
+        }
+      } catch {
+        
+      }
+    }
+
     const gigs = await Gig.find(filter)
       .sort({ createdAt: -1 })
       .lean();
@@ -42,7 +62,7 @@ export default async function FreelancerGigsPage() {
             My Gigs
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Manage your published services, track pricing, and create new offerings.
+            Manage your published services, track pricing, and preview marketplace listings.
           </p>
         </div>
 
@@ -87,10 +107,15 @@ export default async function FreelancerGigsPage() {
               </thead>
               <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
                 {gigs.map((gig) => (
-                  <tr key={gig._id} className="hover:bg-gray-50/60 transition">
+                  <tr key={gig._id} className="hover:bg-gray-50/60 transition group">
                     <td className="py-4 pl-6 pr-3">
                       <div className="flex items-center gap-3">
-                        <div className="relative h-12 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 border border-gray-200">
+                        {/* Cover Image Preview Link */}
+                        <Link
+                          href={`/gigs/${gig._id}`}
+                          target="_blank"
+                          className="relative h-12 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100 border border-gray-200 hover:opacity-90 transition"
+                        >
                           {gig.coverImage ? (
                             <Image
                               src={gig.coverImage}
@@ -99,15 +124,18 @@ export default async function FreelancerGigsPage() {
                               className="object-cover"
                             />
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center text-[10px] text-gray-400">
+                            <div className="flex h-full w-full items-center justify-center text-[10px] text-gray-400 font-semibold">
                               No Img
                             </div>
                           )}
-                        </div>
+                        </Link>
+
+                        {/* Title Link */}
                         <div className="max-w-xs">
                           <Link
                             href={`/gigs/${gig._id}`}
-                            className="font-semibold text-black hover:underline line-clamp-1"
+                            target="_blank"
+                            className="font-semibold text-black hover:underline line-clamp-1 group-hover:text-blue-600 transition-colors"
                           >
                             {gig.title}
                           </Link>
@@ -141,15 +169,17 @@ export default async function FreelancerGigsPage() {
 
                     <td className="py-4 pl-3 pr-6 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {/* Preview / View Gig Button */}
                         <Link
                           href={`/gigs/${gig._id}`}
-                          className="rounded-lg border border-gray-200 px-2.5 py-1 text-[11px] font-medium text-gray-600 hover:border-black hover:text-black transition"
+                          target="_blank"
+                          className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 hover:border-black hover:text-black transition shadow-2xs"
                         >
-                          View
+                          View ↗
                         </Link>
                         <Link
                           href={`/dashboard/freelancer/gigs/${gig._id}/edit`}
-                          className="rounded-lg border border-gray-200 px-2.5 py-1 text-[11px] font-medium text-gray-600 hover:border-black hover:text-black transition"
+                          className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 hover:border-black hover:text-black transition"
                         >
                           Edit
                         </Link>
