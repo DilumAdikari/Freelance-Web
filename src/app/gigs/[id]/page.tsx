@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { connectDB } from '@/lib/mongodb';
 import { Gig } from '@/models/Gig';
 import { User } from '@/models/User';
@@ -8,22 +9,40 @@ interface GigPageProps {
   params: Promise<{ id: string }> | { id: string };
 }
 
+interface IGigDetails {
+  _id: string;
+  title: string;
+  description: string;
+  category: string;
+  price: number;
+  deliveryTimeDays: number;
+  coverImage?: string;
+  userId?: string;
+  freelancerId?: string;
+}
+
+interface ISellerDetails {
+  _id: string;
+  name?: string;
+  email?: string;
+}
+
 export default async function GigDetailsPage({ params }: GigPageProps) {
   const resolvedParams = await params;
   const id = resolvedParams.id;
 
   await connectDB();
 
-  let gig: any = null;
-  let seller: any = null;
+  let gig: IGigDetails | null = null;
+  let seller: ISellerDetails | null = null;
 
   try {
-    gig = await Gig.findById(id).lean();
+    gig = await Gig.findById(id).lean<IGigDetails>();
 
     if (gig) {
       const sellerId = gig.freelancerId || gig.userId;
       if (sellerId) {
-        seller = await User.findById(sellerId).select('name email').lean();
+        seller = await User.findById(sellerId).select('name email').lean<ISellerDetails>();
       }
     }
   } catch (err) {
@@ -78,15 +97,17 @@ export default async function GigDetailsPage({ params }: GigPageProps) {
             </div>
 
             {/* Gig Image Display */}
-            <div className="overflow-hidden rounded-3xl border border-gray-200 bg-gray-50">
+            <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-gray-50 h-[360px] sm:h-[420px]">
               {gig.coverImage ? (
-                <img
+                <Image
                   src={gig.coverImage}
                   alt={gig.title}
-                  className="h-[360px] w-full object-cover sm:h-[420px]"
+                  fill
+                  className="object-cover"
+                  priority
                 />
               ) : (
-                <div className="flex h-[320px] flex-col items-center justify-center bg-linear-to-br from-gray-50 to-gray-100 text-center p-6 sm:h-[380px]">
+                <div className="flex h-full w-full flex-col items-center justify-center bg-linear-to-br from-gray-50 to-gray-100 text-center p-6">
                   <span className="text-5xl mb-2">💻</span>
                   <h3 className="text-lg font-bold text-gray-800">{gig.title}</h3>
                   <p className="text-xs text-gray-400 mt-1">High quality digital service delivered on VisionLK</p>
