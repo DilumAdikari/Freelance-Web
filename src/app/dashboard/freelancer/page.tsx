@@ -1,17 +1,34 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
 import { connectDB } from '@/lib/mongodb';
 import { Gig } from '@/models/Gig';
 import '@/models/User';
 
-
-async function getFreelancerStats(userId?: string) {
+async function getFreelancerStats() {
   try {
     await connectDB();
 
-    const gigFilter = userId ? { freelancerId: userId } : {};
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+
+    let gigFilter: Record<string, unknown> = {};
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+        if (decoded?.userId) {
+          gigFilter = {
+            $or: [{ userId: decoded.userId }, { freelancerId: decoded.userId }],
+          };
+        }
+      } catch {
+        // Token invalid නම් empty filter එකක් ලෙස ක්‍රියාත්මක වේ
+      }
+    }
+
     const totalGigs = await Gig.countDocuments(gigFilter);
 
-   
     const activeOrders = 0;
     const completedOrders = 0;
     const totalEarnings = 0;
@@ -67,7 +84,7 @@ export default async function FreelancerDashboardPage() {
 
       {/* Dynamic Metrics Cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Total Gigs (Dynamic from MongoDB) */}
+        {/* Total Gigs */}
         <div className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
