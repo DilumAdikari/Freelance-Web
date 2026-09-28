@@ -1,14 +1,17 @@
 'use server';
 
+import {
+  FreelancerProfile,
+  IEducation,
+  ICertificate,
+} from '@/models/FreelancerProfile';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { connectDB } from '@/lib/mongodb';
 import { User } from '@/models/User';
-import { FreelancerProfile } from '@/models/FreelancerProfile';
 import { revalidatePath } from 'next/cache';
 
-
-async function getUserIdFromToken() {
+async function getUserIdFromToken(): Promise<string | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get('auth_token')?.value;
   if (!token) return null;
@@ -21,7 +24,6 @@ async function getUserIdFromToken() {
   }
 }
 
-
 export async function getFreelancerProfile() {
   try {
     const userId = await getUserIdFromToken();
@@ -29,14 +31,11 @@ export async function getFreelancerProfile() {
 
     await connectDB();
 
-    
     const user = await User.findById(userId).select('name email role').lean();
     if (!user) return { success: false, error: 'User not found' };
 
-   
     let profile = await FreelancerProfile.findOne({ userId }).lean();
 
-   
     if (!profile) {
       const newProfile = await FreelancerProfile.create({
         userId,
@@ -61,15 +60,14 @@ export async function getFreelancerProfile() {
   }
 }
 
-
 export async function updateFreelancerProfile(data: {
   name?: string;
   headline?: string;
   hourlyRate?: number;
   description?: string;
   skills?: string[];
-  education?: any[];
-  certificates?: any[];
+  education?: IEducation[];
+  certificates?: ICertificate[];
   github?: string;
   linkedin?: string;
 }) {
@@ -79,12 +77,10 @@ export async function updateFreelancerProfile(data: {
 
     await connectDB();
 
-    
     if (data.name) {
       await User.findByIdAndUpdate(userId, { name: data.name });
     }
 
-    
     const updatedProfile = await FreelancerProfile.findOneAndUpdate(
       { userId },
       {
