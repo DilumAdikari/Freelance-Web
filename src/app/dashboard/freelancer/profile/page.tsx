@@ -1,63 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-
-interface EducationItem {
-  id: string;
-  degree: string;
-  institution: string;
-  year: string;
-}
-
-interface CertificateItem {
-  id: string;
-  title: string;
-  issuedBy: string;
-  year: string;
-}
+import { getFreelancerProfile, updateFreelancerProfile } from '@/actions/profile';
+import { IEducation, ICertificate } from '@/models/FreelancerProfile';
 
 export default function FreelancerProfileSettingsPage() {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Profile Data States
-  const [name, setName] = useState('Dilum Adikari');
-  const [headline, setHeadline] = useState('Full Stack Web Developer | Next.js & MERN Specialist');
-  const [hourlyRate, setHourlyRate] = useState('35');
+  const [name, setName] = useState('');
+  const [headline, setHeadline] = useState('');
+  const [hourlyRate, setHourlyRate] = useState<number>(20);
   const [location] = useState('Sri Lanka');
-  const [github, setGithub] = useState('https://github.com');
-  const [linkedin, setLinkedin] = useState('https://linkedin.com');
-
-  const [description, setDescription] = useState(
-    'I am a passionate Full-Stack Software Developer with extensive experience in building modern, scalable web applications using Next.js, React, Node.js, Express, and MongoDB. I focus on clean architecture, optimal database designs, and responsive user experiences.'
-  );
-
-  const [skills, setSkills] = useState<string[]>([
-    'Next.js',
-    'React',
-    'Node.js',
-    'MongoDB',
-    'TypeScript',
-    'Tailwind CSS',
-  ]);
-
-  const [educationList, setEducationList] = useState<EducationItem[]>([
-    {
-      id: '1',
-      degree: 'Bachelor of Information Technology (BIT)',
-      institution: 'University of Moratuwa',
-      year: '2026',
-    },
-  ]);
-
-  const [certificates, setCertificates] = useState<CertificateItem[]>([
-    {
-      id: '1',
-      title: 'Meta Full-Stack Professional Certificate',
-      issuedBy: 'Coursera / Meta',
-      year: '2025',
-    },
-  ]);
+  const [github, setGithub] = useState('');
+  const [linkedin, setLinkedin] = useState('');
+  const [description, setDescription] = useState('');
+  const [skills, setSkills] = useState<string[]>([]);
+  const [educationList, setEducationList] = useState<IEducation[]>([]);
+  const [certificates, setCertificates] = useState<ICertificate[]>([]);
 
   // Modal State
   const [activeModal, setActiveModal] = useState<
@@ -65,14 +29,14 @@ export default function FreelancerProfileSettingsPage() {
   >(null);
 
   // Temporary Edit Form States
-  const [tempName, setTempName] = useState(name);
-  const [tempHeadline, setTempHeadline] = useState(headline);
-  const [tempHourlyRate, setTempHourlyRate] = useState(hourlyRate);
-  const [tempDescription, setTempDescription] = useState(description);
-  const [tempSkills, setTempSkills] = useState<string[]>(skills);
+  const [tempName, setTempName] = useState('');
+  const [tempHeadline, setTempHeadline] = useState('');
+  const [tempHourlyRate, setTempHourlyRate] = useState<number>(20);
+  const [tempDescription, setTempDescription] = useState('');
+  const [tempSkills, setTempSkills] = useState<string[]>([]);
   const [newSkillInput, setNewSkillInput] = useState('');
-  const [tempGithub, setTempGithub] = useState(github);
-  const [tempLinkedin, setTempLinkedin] = useState(linkedin);
+  const [tempGithub, setTempGithub] = useState('');
+  const [tempLinkedin, setTempLinkedin] = useState('');
 
   // Education/Cert inputs
   const [newDegree, setNewDegree] = useState('');
@@ -83,9 +47,77 @@ export default function FreelancerProfileSettingsPage() {
   const [newCertIssuer, setNewCertIssuer] = useState('');
   const [newCertYear, setNewCertYear] = useState('');
 
+  // 1. Initial Load: Fetch from MongoDB
+  useEffect(() => {
+    async function loadProfile() {
+      setLoading(true);
+      setErrorMsg(null);
+      const res = await getFreelancerProfile();
+
+      if (res.success && res.user && res.profile) {
+        setName(res.user.name || '');
+        setHeadline(res.profile.headline || '');
+        setHourlyRate(res.profile.hourlyRate ?? 20);
+        setDescription(res.profile.description || '');
+        setSkills(res.profile.skills || []);
+        setEducationList(res.profile.education || []);
+        setCertificates(res.profile.certificates || []);
+        setGithub(res.profile.github || '');
+        setLinkedin(res.profile.linkedin || '');
+      } else if (!res.success) {
+        setErrorMsg(res.error || 'Failed to load profile');
+      }
+      setLoading(false);
+    }
+
+    loadProfile();
+  }, []);
+
   const showNotification = (msg: string) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(null), 3500);
+  };
+
+  // 2. Generic Database Save Action
+  const persistUpdate = async (
+    overrides: {
+      name?: string;
+      headline?: string;
+      hourlyRate?: number;
+      description?: string;
+      skills?: string[];
+      education?: IEducation[];
+      certificates?: ICertificate[];
+      github?: string;
+      linkedin?: string;
+    },
+    successText: string
+  ) => {
+    setSaving(true);
+    setErrorMsg(null);
+
+    const payload = {
+      name,
+      headline,
+      hourlyRate,
+      description,
+      skills,
+      education: educationList,
+      certificates,
+      github,
+      linkedin,
+      ...overrides,
+    };
+
+    const res = await updateFreelancerProfile(payload);
+    setSaving(false);
+
+    if (res.success) {
+      setActiveModal(null);
+      showNotification(successText);
+    } else {
+      setErrorMsg(res.error || 'Failed to save changes to database');
+    }
   };
 
   // Save Actions
@@ -93,32 +125,31 @@ export default function FreelancerProfileSettingsPage() {
     setName(tempName);
     setHeadline(tempHeadline);
     setHourlyRate(tempHourlyRate);
-    setActiveModal(null);
-    showNotification('Basic information updated successfully!');
+    persistUpdate(
+      { name: tempName, headline: tempHeadline, hourlyRate: tempHourlyRate },
+      'Basic information saved successfully!'
+    );
   };
 
   const handleSaveDescription = () => {
     setDescription(tempDescription);
-    setActiveModal(null);
-    showNotification('Professional overview updated successfully!');
+    persistUpdate({ description: tempDescription }, 'Professional overview saved successfully!');
   };
 
   const handleSaveSkills = () => {
     setSkills(tempSkills);
-    setActiveModal(null);
-    showNotification('Skills updated successfully!');
+    persistUpdate({ skills: tempSkills }, 'Skills updated successfully!');
   };
 
   const handleSaveSocial = () => {
     setGithub(tempGithub);
     setLinkedin(tempLinkedin);
-    setActiveModal(null);
-    showNotification('Social profile links updated successfully!');
+    persistUpdate({ github: tempGithub, linkedin: tempLinkedin }, 'Social profile links saved successfully!');
   };
 
   const handleAddEducation = () => {
     if (!newDegree.trim() || !newInstitution.trim()) return;
-    setEducationList([
+    const updated: IEducation[] = [
       ...educationList,
       {
         id: Date.now().toString(),
@@ -126,16 +157,23 @@ export default function FreelancerProfileSettingsPage() {
         institution: newInstitution.trim(),
         year: newEduYear.trim() || 'Present',
       },
-    ]);
+    ];
+    setEducationList(updated);
     setNewDegree('');
     setNewInstitution('');
     setNewEduYear('');
-    showNotification('Education qualification added successfully!');
+    persistUpdate({ education: updated }, 'Education qualification added successfully!');
+  };
+
+  const handleRemoveEducation = (id: string) => {
+    const updated = educationList.filter((item) => item.id !== id);
+    setEducationList(updated);
+    persistUpdate({ education: updated }, 'Education qualification removed successfully!');
   };
 
   const handleAddCertificate = () => {
     if (!newCertTitle.trim() || !newCertIssuer.trim()) return;
-    setCertificates([
+    const updated: ICertificate[] = [
       ...certificates,
       {
         id: Date.now().toString(),
@@ -143,12 +181,28 @@ export default function FreelancerProfileSettingsPage() {
         issuedBy: newCertIssuer.trim(),
         year: newCertYear.trim() || '2026',
       },
-    ]);
+    ];
+    setCertificates(updated);
     setNewCertTitle('');
     setNewCertIssuer('');
     setNewCertYear('');
-    showNotification('Certification added successfully!');
+    persistUpdate({ certificates: updated }, 'Certification added successfully!');
   };
+
+  const handleRemoveCertificate = (id: string) => {
+    const updated = certificates.filter((item) => item.id !== id);
+    setCertificates(updated);
+    persistUpdate({ certificates: updated }, 'Certification removed successfully!');
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-72 flex-col items-center justify-center gap-3 text-sm font-semibold text-gray-500">
+        <span className="h-6 w-6 animate-spin rounded-full border-2 border-black border-t-transparent" />
+        <p>Loading your profile details...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 text-black antialiased">
@@ -179,6 +233,12 @@ export default function FreelancerProfileSettingsPage() {
         </div>
       )}
 
+      {errorMsg && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs font-semibold text-red-600 animate-in fade-in duration-200">
+          {errorMsg}
+        </div>
+      )}
+
       {/* Main Grid: Left Sidebar & Right Content */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* ================= LEFT SIDEBAR ================= */}
@@ -201,7 +261,7 @@ export default function FreelancerProfileSettingsPage() {
             {/* Profile Avatar */}
             <div className="relative mx-auto h-28 w-28">
               <div className="flex h-28 w-28 items-center justify-center rounded-full bg-black text-3xl font-black text-white shadow-md ring-4 ring-gray-100">
-                {name.charAt(0)}
+                {name ? name.charAt(0).toUpperCase() : 'U'}
               </div>
               <button
                 type="button"
@@ -212,8 +272,10 @@ export default function FreelancerProfileSettingsPage() {
               </button>
             </div>
 
-            <h2 className="mt-4 text-xl font-black text-black">{name}</h2>
-            <p className="mt-1 text-xs text-gray-500 line-clamp-2">{headline}</p>
+            <h2 className="mt-4 text-xl font-black text-black">{name || 'Your Name'}</h2>
+            <p className="mt-1 text-xs text-gray-500 line-clamp-2">
+              {headline || 'Set your professional headline'}
+            </p>
 
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -254,14 +316,18 @@ export default function FreelancerProfileSettingsPage() {
               </button>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              {skills.map((skill) => (
-                <span
-                  key={skill}
-                  className="rounded-xl bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-800"
-                >
-                  {skill}
-                </span>
-              ))}
+              {skills.length === 0 ? (
+                <p className="text-xs text-gray-400">No skills added yet.</p>
+              ) : (
+                skills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="rounded-xl bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-800"
+                  >
+                    {skill}
+                  </span>
+                ))
+              )}
             </div>
           </div>
 
@@ -286,25 +352,15 @@ export default function FreelancerProfileSettingsPage() {
             <div className="mt-4 space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">GitHub:</span>
-                <a
-                  href={github}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-medium text-black hover:underline truncate max-w-[150px]"
-                >
-                  {github.replace('https://', '')}
-                </a>
+                <span className="font-medium text-black truncate max-w-[150px]">
+                  {github ? github.replace('https://', '') : 'Not connected'}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">LinkedIn:</span>
-                <a
-                  href={linkedin}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-medium text-black hover:underline truncate max-w-[150px]"
-                >
-                  {linkedin.replace('https://', '')}
-                </a>
+                <span className="font-medium text-black truncate max-w-[150px]">
+                  {linkedin ? linkedin.replace('https://', '') : 'Not connected'}
+                </span>
               </div>
             </div>
           </div>
@@ -330,7 +386,7 @@ export default function FreelancerProfileSettingsPage() {
               </button>
             </div>
             <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-gray-700">
-              {description}
+              {description || 'Provide an overview of your experience, services, and workflows.'}
             </p>
           </div>
 
@@ -365,7 +421,7 @@ export default function FreelancerProfileSettingsPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setEducationList(educationList.filter((e) => e.id !== item.id))}
+                      onClick={() => handleRemoveEducation(item.id)}
                       className="text-xs text-red-500 hover:underline"
                     >
                       Delete
@@ -407,7 +463,7 @@ export default function FreelancerProfileSettingsPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setCertificates(certificates.filter((c) => c.id !== cert.id))}
+                      onClick={() => handleRemoveCertificate(cert.id)}
                       className="text-xs text-red-500 hover:underline"
                     >
                       Delete
@@ -420,7 +476,7 @@ export default function FreelancerProfileSettingsPage() {
         </div>
       </div>
 
-      {/* ================= MODALS (POPUP BOXES) ================= */}
+      {/* ================= MODALS ================= */}
 
       {/* 1. Basic Info Modal */}
       {activeModal === 'basic' && (
@@ -442,7 +498,7 @@ export default function FreelancerProfileSettingsPage() {
                 <input
                   type="number"
                   value={tempHourlyRate}
-                  onChange={(e) => setTempHourlyRate(e.target.value)}
+                  onChange={(e) => setTempHourlyRate(Number(e.target.value))}
                   className="mt-1 w-full rounded-xl border border-gray-300 p-3 text-sm focus:border-black focus:outline-none"
                 />
               </div>
@@ -465,9 +521,10 @@ export default function FreelancerProfileSettingsPage() {
               </button>
               <button
                 onClick={handleSaveBasic}
-                className="rounded-xl bg-black px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-gray-800"
+                disabled={saving}
+                className="rounded-xl bg-black px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-gray-800 disabled:opacity-50"
               >
-                Save Changes
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -496,9 +553,10 @@ export default function FreelancerProfileSettingsPage() {
               </button>
               <button
                 onClick={handleSaveDescription}
-                className="rounded-xl bg-black px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-gray-800"
+                disabled={saving}
+                className="rounded-xl bg-black px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-gray-800 disabled:opacity-50"
               >
-                Save Changes
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -556,9 +614,10 @@ export default function FreelancerProfileSettingsPage() {
               </button>
               <button
                 onClick={handleSaveSkills}
-                className="rounded-xl bg-black px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-gray-800"
+                disabled={saving}
+                className="rounded-xl bg-black px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-gray-800 disabled:opacity-50"
               >
-                Save Changes
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -601,13 +660,11 @@ export default function FreelancerProfileSettingsPage() {
                 Close
               </button>
               <button
-                onClick={() => {
-                  handleAddEducation();
-                  setActiveModal(null);
-                }}
-                className="rounded-xl bg-black px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-gray-800"
+                onClick={handleAddEducation}
+                disabled={saving}
+                className="rounded-xl bg-black px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-gray-800 disabled:opacity-50"
               >
-                Add
+                {saving ? 'Saving...' : 'Add'}
               </button>
             </div>
           </div>
@@ -650,13 +707,11 @@ export default function FreelancerProfileSettingsPage() {
                 Close
               </button>
               <button
-                onClick={() => {
-                  handleAddCertificate();
-                  setActiveModal(null);
-                }}
-                className="rounded-xl bg-black px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-gray-800"
+                onClick={handleAddCertificate}
+                disabled={saving}
+                className="rounded-xl bg-black px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-gray-800 disabled:opacity-50"
               >
-                Add
+                {saving ? 'Saving...' : 'Add'}
               </button>
             </div>
           </div>
@@ -697,9 +752,10 @@ export default function FreelancerProfileSettingsPage() {
               </button>
               <button
                 onClick={handleSaveSocial}
-                className="rounded-xl bg-black px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-gray-800"
+                disabled={saving}
+                className="rounded-xl bg-black px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-gray-800 disabled:opacity-50"
               >
-                Save Changes
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
