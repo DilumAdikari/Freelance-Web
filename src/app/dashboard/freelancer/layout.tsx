@@ -31,8 +31,8 @@ export default function FreelancerDashboardLayout({
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Public Profile View Shortcut Button */}
+          { /*<div className="flex items-center gap-4">
+            
             <Link
               href="/freelancers/me"
               target="_blank"
@@ -48,8 +48,8 @@ export default function FreelancerDashboardLayout({
             >
               Sign Out
             </Link>
-          </div>
-        </div>
+          </div>*/}
+        </div> *
 
         {/* 2. Sub-Navigation Tabs */}
         <div className="border-t border-gray-100 bg-white">
