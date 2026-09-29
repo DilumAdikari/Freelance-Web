@@ -31,7 +31,8 @@ export async function getFreelancerProfile() {
 
     await connectDB();
 
-    const user = await User.findById(userId).select('name email role').lean();
+    // avatar kooda select maadalaagide
+    const user = await User.findById(userId).select('name email role avatar').lean();
     if (!user) return { success: false, error: 'User not found' };
 
     let profile = await FreelancerProfile.findOne({ userId }).lean();
@@ -62,6 +63,7 @@ export async function getFreelancerProfile() {
 
 export async function updateFreelancerProfile(data: {
   name?: string;
+  avatar?: string;
   headline?: string;
   hourlyRate?: number;
   description?: string;
@@ -77,24 +79,30 @@ export async function updateFreelancerProfile(data: {
 
     await connectDB();
 
-    if (data.name) {
-      await User.findByIdAndUpdate(userId, { name: data.name });
+    // User collection nalli name athava avatar update maaduvudu
+    const userUpdates: { name?: string; avatar?: string } = {};
+    if (data.name) userUpdates.name = data.name;
+    if (data.avatar) userUpdates.avatar = data.avatar;
+
+    if (Object.keys(userUpdates).length > 0) {
+      await User.findByIdAndUpdate(userId, userUpdates);
     }
+
+    // Profile updates
+    const profileUpdates: Record<string, unknown> = {};
+    if (data.headline !== undefined) profileUpdates.headline = data.headline;
+    if (data.hourlyRate !== undefined) profileUpdates.hourlyRate = data.hourlyRate;
+    if (data.description !== undefined) profileUpdates.description = data.description;
+    if (data.skills !== undefined) profileUpdates.skills = data.skills;
+    if (data.education !== undefined) profileUpdates.education = data.education;
+    if (data.certificates !== undefined) profileUpdates.certificates = data.certificates;
+    if (data.github !== undefined) profileUpdates.github = data.github;
+    if (data.linkedin !== undefined) profileUpdates.linkedin = data.linkedin;
+    if (data.avatar !== undefined) profileUpdates.avatar = data.avatar;
 
     const updatedProfile = await FreelancerProfile.findOneAndUpdate(
       { userId },
-      {
-        $set: {
-          headline: data.headline,
-          hourlyRate: data.hourlyRate,
-          description: data.description,
-          skills: data.skills,
-          education: data.education,
-          certificates: data.certificates,
-          github: data.github,
-          linkedin: data.linkedin,
-        },
-      },
+      { $set: profileUpdates },
       { new: true, upsert: true }
     ).lean();
 

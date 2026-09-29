@@ -6,6 +6,7 @@ export interface IUser {
   email: string;
   passwordHash: string;
   role: 'CLIENT' | 'FREELANCER' | 'ADMIN';
+  avatar?: string;
   profileTitle?: string;
   bio?: string;
   skills: string[];
@@ -24,6 +25,7 @@ const UserSchema = new Schema<IUser>(
     bio: { type: String, trim: true },
     skills: { type: [String], default: [] },
     hourlyRate: { type: Number, min: 0 },
+    avatar: { type: String, default: '' },
   },
   { timestamps: true }
 );
