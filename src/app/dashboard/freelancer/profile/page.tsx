@@ -1,18 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getFreelancerProfile, updateFreelancerProfile } from '@/actions/profile';
 import { IEducation, ICertificate } from '@/models/FreelancerProfile';
 
 export default function FreelancerProfileSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImg, setUploadingImg] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Profile Data States
   const [name, setName] = useState('');
+  const [avatar, setAvatar] = useState<string>('');
   const [headline, setHeadline] = useState('');
   const [hourlyRate, setHourlyRate] = useState<number>(20);
   const [location] = useState('Sri Lanka');
@@ -22,6 +25,9 @@ export default function FreelancerProfileSettingsPage() {
   const [skills, setSkills] = useState<string[]>([]);
   const [educationList, setEducationList] = useState<IEducation[]>([]);
   const [certificates, setCertificates] = useState<ICertificate[]>([]);
+
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Modal State
   const [activeModal, setActiveModal] = useState<
@@ -47,7 +53,7 @@ export default function FreelancerProfileSettingsPage() {
   const [newCertIssuer, setNewCertIssuer] = useState('');
   const [newCertYear, setNewCertYear] = useState('');
 
-  // 1. Initial Load: Fetch from MongoDB
+  
   useEffect(() => {
     async function loadProfile() {
       setLoading(true);
@@ -56,6 +62,7 @@ export default function FreelancerProfileSettingsPage() {
 
       if (res.success && res.user && res.profile) {
         setName(res.user.name || '');
+        setAvatar(res.user.avatar || res.profile.avatar || '');
         setHeadline(res.profile.headline || '');
         setHourlyRate(res.profile.hourlyRate ?? 20);
         setDescription(res.profile.description || '');
@@ -78,7 +85,36 @@ export default function FreelancerProfileSettingsPage() {
     setTimeout(() => setSuccessMsg(null), 3500);
   };
 
-  // 2. Generic Database Save Action
+  
+  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    
+    if (file.size > 2 * 1024 * 1024) {
+      setErrorMsg('Image size must be less than 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadstart = () => setUploadingImg(true);
+    reader.onloadend = async () => {
+      const base64Data = reader.result as string;
+      setAvatar(base64Data);
+      setUploadingImg(false);
+
+      
+      const res = await updateFreelancerProfile({ avatar: base64Data });
+      if (res.success) {
+        showNotification('Profile photo updated successfully!');
+      } else {
+        setErrorMsg('Failed to save profile picture to database');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 3. Generic Database Save Function
   const persistUpdate = async (
     overrides: {
       name?: string;
@@ -90,6 +126,7 @@ export default function FreelancerProfileSettingsPage() {
       certificates?: ICertificate[];
       github?: string;
       linkedin?: string;
+      avatar?: string;
     },
     successText: string
   ) => {
@@ -98,6 +135,7 @@ export default function FreelancerProfileSettingsPage() {
 
     const payload = {
       name,
+      avatar,
       headline,
       hourlyRate,
       description,
@@ -120,7 +158,7 @@ export default function FreelancerProfileSettingsPage() {
     }
   };
 
-  // Save Actions
+  // Save Handlers
   const handleSaveBasic = () => {
     setName(tempName);
     setHeadline(tempHeadline);
@@ -206,6 +244,15 @@ export default function FreelancerProfileSettingsPage() {
 
   return (
     <div className="space-y-6 text-black antialiased">
+      
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleImageChange}
+        accept="image/png, image/jpeg, image/webp"
+        className="hidden"
+      />
+
       {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-5">
         <div>
@@ -258,17 +305,34 @@ export default function FreelancerProfileSettingsPage() {
               ✏️
             </button>
 
-            {/* Profile Avatar */}
+            {/* Profile Avatar / Photo Container */}
             <div className="relative mx-auto h-28 w-28">
-              <div className="flex h-28 w-28 items-center justify-center rounded-full bg-black text-3xl font-black text-white shadow-md ring-4 ring-gray-100">
-                {name ? name.charAt(0).toUpperCase() : 'U'}
+              <div className="relative h-28 w-28 overflow-hidden rounded-full bg-black shadow-md ring-4 ring-gray-100 flex items-center justify-center">
+                {uploadingImg ? (
+                  <span className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : avatar ? (
+                  <Image
+                    src={avatar}
+                    alt={name || 'Profile Photo'}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <span className="text-3xl font-black text-white">
+                    {name ? name.charAt(0).toUpperCase() : 'U'}
+                  </span>
+                )}
               </div>
+
+              
               <button
                 type="button"
-                className="absolute bottom-0 right-0 rounded-full bg-white p-2 shadow-md border border-gray-200 hover:bg-gray-50 transition"
-                title="Change Photo"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingImg}
+                className="absolute bottom-0 right-0 rounded-full bg-white p-2.5 shadow-md border border-gray-200 hover:bg-gray-50 hover:scale-105 active:scale-95 transition cursor-pointer"
+                title="Upload Profile Photo"
               >
-                📷
+                <span className="text-sm leading-none">📷</span>
               </button>
             </div>
 

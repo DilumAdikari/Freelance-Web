@@ -26,6 +26,7 @@ export interface IFreelancerProfile extends Document {
   linkedin?: string;
   createdAt: Date;
   updatedAt: Date;
+  avatar?: string; 
 }
 
 const FreelancerProfileSchema = new Schema<IFreelancerProfile>(
@@ -73,6 +74,10 @@ const FreelancerProfileSchema = new Schema<IFreelancerProfile>(
       default: '',
     },
     linkedin: {
+      type: String,
+      default: '',
+    },
+    avatar: {
       type: String,
       default: '',
     },

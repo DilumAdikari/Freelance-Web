@@ -30,6 +30,8 @@ export default function FreelancerDashboardLayout({
               Seller Dashboard
             </span>
           </div>
+           
+          {/* multi line comment using  Remove Navbar profile view button and sign out butoon */}
 
           { /*<div className="flex items-center gap-4">
             
