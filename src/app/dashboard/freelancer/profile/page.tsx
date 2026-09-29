@@ -26,7 +26,7 @@ export default function FreelancerProfileSettingsPage() {
   const [educationList, setEducationList] = useState<IEducation[]>([]);
   const [certificates, setCertificates] = useState<ICertificate[]>([]);
 
-  
+  // Hidden File Input Ref
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Modal State
@@ -53,7 +53,7 @@ export default function FreelancerProfileSettingsPage() {
   const [newCertIssuer, setNewCertIssuer] = useState('');
   const [newCertYear, setNewCertYear] = useState('');
 
-  
+  // 1. Initial Load: Fetch from MongoDB
   useEffect(() => {
     async function loadProfile() {
       setLoading(true);
@@ -85,36 +85,66 @@ export default function FreelancerProfileSettingsPage() {
     setTimeout(() => setSuccessMsg(null), 3500);
   };
 
-  
+  // 2. High-Speed Image Resize, Compression & Instant Database Save
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    
-    if (file.size > 2 * 1024 * 1024) {
-      setErrorMsg('Image size must be less than 2MB');
-      return;
-    }
+    setUploadingImg(true);
+    setErrorMsg(null);
 
     const reader = new FileReader();
-    reader.onloadstart = () => setUploadingImg(true);
-    reader.onloadend = async () => {
-      const base64Data = reader.result as string;
-      setAvatar(base64Data);
-      setUploadingImg(false);
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.src = event.target?.result as string;
 
-      
-      const res = await updateFreelancerProfile({ avatar: base64Data });
-      if (res.success) {
-        showNotification('Profile photo updated successfully!');
-      } else {
-        setErrorMsg('Failed to save profile picture to database');
-      }
+      img.onload = async () => {
+        // Dimensions 300x300 ge compress maaduvudu
+        const maxDimension = 300;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDimension) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          }
+        } else {
+          if (height > maxDimension) {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // 70% quality jote sanna size (50KB-80KB) file create maaduvudu
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+          setAvatar(compressedBase64);
+          setUploadingImg(false);
+
+          // Database ge instant save
+          const res = await updateFreelancerProfile({ avatar: compressedBase64 });
+          if (res.success) {
+            showNotification('Profile photo updated successfully!');
+          } else {
+            setErrorMsg('Failed to save profile picture');
+          }
+        }
+      };
     };
+
     reader.readAsDataURL(file);
   };
 
-  // 3. Generic Database Save Function
+  // 3. Generic Database Save Action
   const persistUpdate = async (
     overrides: {
       name?: string;
@@ -244,7 +274,7 @@ export default function FreelancerProfileSettingsPage() {
 
   return (
     <div className="space-y-6 text-black antialiased">
-      
+      {/* File Input */}
       <input
         type="file"
         ref={fileInputRef}
@@ -305,7 +335,7 @@ export default function FreelancerProfileSettingsPage() {
               ✏️
             </button>
 
-            {/* Profile Avatar / Photo Container */}
+            {/* Profile Avatar Container */}
             <div className="relative mx-auto h-28 w-28">
               <div className="relative h-28 w-28 overflow-hidden rounded-full bg-black shadow-md ring-4 ring-gray-100 flex items-center justify-center">
                 {uploadingImg ? (
@@ -324,7 +354,7 @@ export default function FreelancerProfileSettingsPage() {
                 )}
               </div>
 
-              
+              {/* Camera Button */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
