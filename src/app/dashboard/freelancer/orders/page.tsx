@@ -1,100 +1,75 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { getFreelancerOrders, IOrderTableItem } from '@/actions/orders';
 
 type OrderStatus = 'ALL' | 'ACTIVE' | 'UNDER_REVIEW' | 'COMPLETED' | 'CANCELLED';
 
-interface IOrder {
-  id: string;
-  orderNumber: string;
-  clientName: string;
-  clientAvatar?: string;
-  gigTitle: string;
-  amount: number;
-  deliveryDueDate: string;
-  status: 'ACTIVE' | 'UNDER_REVIEW' | 'COMPLETED' | 'CANCELLED';
-  createdAt: string;
-}
-
 export default function FreelancerOrdersPage() {
+  const [orders, setOrders] = useState<IOrderTableItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<OrderStatus>('ALL');
 
-  // සටහන: Backend Order collection එක හැදූ පසු මේවා dynamic කරනු ලැබේ
-  const orders: IOrder[] = [
-    {
-      id: '1',
-      orderNumber: 'VLK-10928',
-      clientName: 'Alex Morgan',
-      gigTitle: 'Modern Full-Stack Next.js 16 Web Application',
-      amount: 350,
-      deliveryDueDate: 'Oct 2, 2026',
-      status: 'ACTIVE',
-      createdAt: 'Sep 24, 2026',
-    },
-    {
-      id: '2',
-      orderNumber: 'VLK-10842',
-      clientName: 'Sarah Jenkins',
-      gigTitle: 'Responsive Tailwind CSS Landing Page',
-      amount: 150,
-      deliveryDueDate: 'Sep 28, 2026',
-      status: 'UNDER_REVIEW',
-      createdAt: 'Sep 21, 2026',
-    },
-    {
-      id: '3',
-      orderNumber: 'VLK-10512',
-      clientName: 'David Miller',
-      gigTitle: 'Fiverr Clone UI & MERN Architecture',
-      amount: 500,
-      deliveryDueDate: 'Sep 15, 2026',
-      status: 'COMPLETED',
-      createdAt: 'Sep 10, 2026',
-    },
-  ];
+  useEffect(() => {
+    async function loadOrders() {
+      setLoading(true);
+      const res = await getFreelancerOrders();
+      if (res.success && res.orders) {
+        setOrders(res.orders);
+      }
+      setLoading(false);
+    }
+    loadOrders();
+  }, []);
 
   const filteredOrders = orders.filter((order) => {
     if (activeTab === 'ALL') return true;
-    return order.status === activeTab;
+    if (activeTab === 'ACTIVE') return order.status === 'In Progress';
+    if (activeTab === 'UNDER_REVIEW') return order.status === 'Under Review';
+    if (activeTab === 'COMPLETED') return order.status === 'Completed';
+    if (activeTab === 'CANCELLED') return order.status === 'Cancelled';
+    return true;
   });
 
-  const getStatusBadge = (status: IOrder['status']) => {
+  const getStatusBadge = (status: IOrderTableItem['status']) => {
     switch (status) {
-      case 'ACTIVE':
+      case 'In Progress':
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
             <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" />
             In Progress
           </span>
         );
-      case 'UNDER_REVIEW':
+      case 'Under Review':
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
             Under Review
           </span>
         );
-      case 'COMPLETED':
+      case 'Completed':
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
             Completed
           </span>
         );
-      case 'CANCELLED':
+      case 'Cancelled':
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">
             Cancelled
           </span>
         );
+      default:
+        return null;
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 antialiased text-black">
       {/* Page Title */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-5">
+      <div className="flex flex-col gap-2 pb-5 border-b border-gray-200 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-black sm:text-3xl">
             Manage Orders
@@ -106,7 +81,7 @@ export default function FreelancerOrdersPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
+      <div className="flex flex-wrap gap-2 pb-3 border-b border-gray-200">
         {(['ALL', 'ACTIVE', 'UNDER_REVIEW', 'COMPLETED', 'CANCELLED'] as OrderStatus[]).map((tab) => (
           <button
             key={tab}
@@ -114,7 +89,7 @@ export default function FreelancerOrdersPage() {
             className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition ${
               activeTab === tab
                 ? 'bg-black text-white shadow-sm'
-                : 'bg-white text-gray-600 border border-gray-200 hover:border-black hover:text-black'
+                : 'border border-gray-200 bg-white text-gray-600 hover:border-black hover:text-black'
             }`}
           >
             {tab === 'ALL'
@@ -126,22 +101,27 @@ export default function FreelancerOrdersPage() {
         ))}
       </div>
 
-      {/* Orders Table or Empty State */}
-      {filteredOrders.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-gray-300 bg-white p-12 text-center shadow-sm">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-2xl">
+      {/* Loading, Empty State, or Orders Table */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center gap-3 p-12 bg-white border border-gray-200 shadow-xs rounded-3xl">
+          <span className="w-6 h-6 border-2 border-black rounded-full animate-spin border-t-transparent" />
+          <p className="text-xs font-semibold text-gray-500">Loading orders from database...</p>
+        </div>
+      ) : filteredOrders.length === 0 ? (
+        <div className="p-12 text-center bg-white border border-gray-300 border-dashed shadow-sm rounded-3xl">
+          <div className="flex items-center justify-center w-12 h-12 mx-auto text-2xl bg-gray-100 rounded-2xl">
             📦
           </div>
           <h3 className="mt-4 text-base font-bold text-black">No orders found</h3>
-          <p className="mt-1 text-xs text-gray-500 max-w-sm mx-auto">
+          <p className="max-w-sm mx-auto mt-1 text-xs text-gray-500">
             There are currently no orders in this category. New client orders will be listed here automatically.
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="overflow-hidden bg-white border border-gray-200 shadow-sm rounded-2xl">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-gray-100 bg-gray-50/75 text-gray-400 uppercase tracking-wider font-semibold">
+            <table className="w-full text-xs text-left">
+              <thead className="border-b border-gray-100 bg-gray-50/75 font-semibold uppercase tracking-wider text-gray-400">
                 <tr>
                   <th className="py-3.5 pl-6 pr-3">Order</th>
                   <th className="py-3.5 px-3">Client</th>
@@ -152,44 +132,47 @@ export default function FreelancerOrdersPage() {
                   <th className="py-3.5 pl-3 pr-6 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
+              <tbody className="font-medium text-gray-700 divide-y divide-gray-100">
                 {filteredOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50/60 transition">
+                  <tr key={order._id} className="transition hover:bg-gray-50/60">
                     <td className="py-4 pl-6 pr-3 font-bold text-black">
                       {order.orderNumber}
                     </td>
 
-                    <td className="py-4 px-3">
+                    <td className="px-3 py-4">
                       <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-700 border border-gray-200">
-                          {order.clientName.charAt(0)}
+                        <div className="flex items-center justify-center text-xs font-bold text-gray-700 bg-gray-100 border border-gray-200 rounded-full h-7 w-7">
+                          {order.clientName ? order.clientName.charAt(0).toUpperCase() : 'C'}
                         </div>
-                        <span className="font-semibold text-black">{order.clientName}</span>
+                        <div>
+                          <p className="font-semibold text-black">{order.clientName}</p>
+                          <p className="text-[10px] text-gray-400">{order.clientEmail}</p>
+                        </div>
                       </div>
                     </td>
 
-                    <td className="py-4 px-3 max-w-xs truncate text-black font-medium">
+                    <td className="max-w-xs px-3 py-4 font-medium text-black truncate">
                       {order.gigTitle}
                     </td>
 
-                    <td className="py-4 px-3 text-gray-500 font-medium">
-                      {order.deliveryDueDate}
+                    <td className="px-3 py-4 font-medium text-gray-500">
+                      {order.dueDate}
                     </td>
 
-                    <td className="py-4 px-3 font-bold text-black">
+                    <td className="px-3 py-4 font-bold text-black">
                       ${order.amount}
                     </td>
 
-                    <td className="py-4 px-3">
+                    <td className="px-3 py-4">
                       {getStatusBadge(order.status)}
                     </td>
 
                     <td className="py-4 pl-3 pr-6 text-right">
                       <Link
-                        href={`/dashboard/freelancer/orders/${order.id}`}
-                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-[11px] font-semibold text-gray-700 hover:border-black hover:text-black transition"
+                        href={`/dashboard/freelancer/orders/${order._id}`}
+                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-[11px] font-semibold text-gray-700 transition hover:border-black hover:text-black"
                       >
-                        {order.status === 'ACTIVE' ? 'Deliver Work' : 'View Order'}
+                        {order.status === 'In Progress' ? 'Deliver Work' : 'View Order'}
                       </Link>
                     </td>
                   </tr>
