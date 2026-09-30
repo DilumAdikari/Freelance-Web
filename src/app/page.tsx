@@ -62,7 +62,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   return (
     <div className="min-h-screen bg-[#f9fafb] text-black antialiased">
       {/* Primary Navigation Bar */}
-      <Navbar isLoggedIn={isLoggedIn} />
+      <Navbar />
 
       {/* Categories Sub-navigation Bar */}
       <CategoryNavbar />

@@ -4,6 +4,13 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getCurrentUser } from '@/actions/auth';
 
+interface NavbarProps {
+  isLoggedIn?: boolean;
+  userRole?: 'FREELANCER' | 'CLIENT' | 'freelancer' | 'client' | string;
+  userAvatar?: string;
+  userName?: string;
+}
+
 interface IUserState {
   name: string;
   email: string;
@@ -11,9 +18,23 @@ interface IUserState {
   avatar?: string;
 }
 
-export default function Navbar() {
-  const [user, setUser] = useState<IUserState | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function Navbar({
+  isLoggedIn: initialLoggedIn,
+  userRole: initialRole,
+  userAvatar: initialAvatar,
+  userName: initialName,
+}: NavbarProps = {}) {
+  const [user, setUser] = useState<IUserState | null>(
+    initialLoggedIn
+      ? {
+          name: initialName || 'User',
+          email: '',
+          role: initialRole || 'freelancer',
+          avatar: initialAvatar || '',
+        }
+      : null
+  );
+  const [loading, setLoading] = useState(!initialLoggedIn);
 
   useEffect(() => {
     async function checkAuth() {
@@ -49,12 +70,10 @@ export default function Navbar() {
         {/* Right Side Navigation */}
         <div className="flex items-center gap-4 sm:gap-6">
           {loading ? (
-            // Auth check වෙනකම් පොඩි placeholder එකක්
             <div className="h-8 w-20 animate-pulse rounded-lg bg-gray-100" />
           ) : user ? (
             // ================= LOGGED-IN VIEW =================
             <>
-              {/* Role-based Dashboard Link */}
               <Link
                 href={isClient ? '/dashboard/client' : '/dashboard/freelancer'}
                 className="text-xs font-bold text-gray-700 hover:text-black transition"
@@ -62,7 +81,6 @@ export default function Navbar() {
                 Dashboard
               </Link>
 
-              {/* Role-based Orders Link */}
               <Link
                 href={isClient ? '/dashboard/client/orders' : '/dashboard/freelancer/orders'}
                 className="text-xs font-semibold text-gray-600 hover:text-black transition"
@@ -70,7 +88,6 @@ export default function Navbar() {
                 Orders
               </Link>
 
-              {/* Freelancer ට පමණක් + Post a Gig පෙන්වයි (Client ට සම්පූර්ණයෙන්ම සඟවයි) */}
               {isFreelancer && (
                 <Link
                   href="/dashboard/freelancer/gigs/new"
@@ -80,7 +97,6 @@ export default function Navbar() {
                 </Link>
               )}
 
-              {/* User Avatar */}
               <Link
                 href={isClient ? '/dashboard/client' : '/dashboard/freelancer/profile'}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-xs font-bold text-white shadow-sm ring-2 ring-transparent transition hover:ring-[#178f23] overflow-hidden"
