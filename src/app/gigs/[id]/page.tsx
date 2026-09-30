@@ -1,9 +1,10 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { connectDB } from '@/lib/mongodb';
 import { Gig } from '@/models/Gig';
 import { User } from '@/models/User';
+import { createOrderAction } from '@/actions/orders';
 
 interface GigPageProps {
   params: Promise<{ id: string }> | { id: string };
@@ -15,7 +16,8 @@ interface IGigDetails {
   description: string;
   category: string;
   price: number;
-  deliveryTimeDays: number;
+  deliveryTimeDays?: number;
+  deliveryDays?: number;
   coverImage?: string;
   userId?: string;
   freelancerId?: string;
@@ -56,6 +58,16 @@ export default async function GigDetailsPage({ params }: GigPageProps) {
 
   const sellerName = seller?.name || 'Professional Seller';
   const sellerInitial = sellerName.charAt(0).toUpperCase();
+  const deliveryDays = gig.deliveryTimeDays || gig.deliveryDays || 3;
+
+  // Direct Server Action Handler for Instant Order Placement
+  async function handleOrderSubmit() {
+    'use server';
+    const res = await createOrderAction(id);
+    if (res.success) {
+      redirect('/dashboard/client');
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white text-black antialiased">
@@ -178,7 +190,7 @@ export default async function GigDetailsPage({ params }: GigPageProps) {
               <div className="space-y-3 text-xs text-gray-600">
                 <div className="flex items-center gap-2 font-semibold text-black">
                   <span>⏱️</span>
-                  <span>{gig.deliveryTimeDays} Days Delivery</span>
+                  <span>{deliveryDays} Days Delivery</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span>🔄</span>
@@ -191,12 +203,14 @@ export default async function GigDetailsPage({ params }: GigPageProps) {
               </div>
 
               <div className="space-y-2 pt-2">
-                <button
-                  type="button"
-                  className="w-full rounded-2xl bg-black py-3.5 text-xs font-bold text-white shadow-sm hover:bg-gray-800 transition"
-                >
-                  Continue (${gig.price}) &rarr;
-                </button>
+                <form action={handleOrderSubmit}>
+                  <button
+                    type="submit"
+                    className="w-full rounded-2xl bg-black py-3.5 text-xs font-bold text-white shadow-sm hover:bg-gray-800 transition cursor-pointer"
+                  >
+                    Continue (${gig.price}) &rarr;
+                  </button>
+                </form>
 
                 <button
                   type="button"
