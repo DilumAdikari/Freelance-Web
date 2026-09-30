@@ -1,4 +1,6 @@
-import Image from 'next/image';
+'use client';
+
+import Link from 'next/link';
 
 export interface IGigItem {
   _id: string;
@@ -6,27 +8,33 @@ export interface IGigItem {
   category: string;
   description: string;
   price: number;
-  deliveryTimeDays: number;
+  deliveryTimeDays?: number;
+  deliveryDays?: number;
   coverImage?: string;
-  freelancerId: {
-    _id: string;
-    name: string;
-    email: string;
+  freelancerId?: {
+    _id?: string;
+    name?: string;
+    email?: string;
   };
 }
 
 export default function GigCard({ gig }: { gig: IGigItem }) {
+  const deliveryDays = gig.deliveryTimeDays || gig.deliveryDays || 3;
+  const sellerName = gig.freelancerId?.name || 'Freelancer';
+
   return (
-    <div className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+    <Link
+      href={`/gigs/${gig._id}`}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs transition hover:-translate-y-1 hover:shadow-md cursor-pointer"
+    >
       {/* Cover Image */}
-      <div className="relative h-48 w-full bg-gray-100 overflow-hidden">
+      <div className="relative h-48 w-full bg-gray-100 overflow-hidden flex items-center justify-center">
         {gig.coverImage ? (
-          <Image
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
             src={gig.coverImage}
             alt={gig.title}
-            fill
-            className="object-cover transition duration-300 group-hover:scale-105"
-            sizes="(max-width: 768px) 100vw, 25vw"
+            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gray-100 text-xs font-medium text-gray-400">
@@ -41,7 +49,7 @@ export default function GigCard({ gig }: { gig: IGigItem }) {
           <span className="font-semibold" style={{ color: '#178f23' }}>
             {gig.category}
           </span>
-          <span className="text-gray-400">{gig.deliveryTimeDays}d delivery</span>
+          <span className="text-gray-400">{deliveryDays}d delivery</span>
         </div>
 
         <h3 className="line-clamp-2 text-sm font-semibold text-black transition group-hover:text-[#178f23]">
@@ -54,7 +62,7 @@ export default function GigCard({ gig }: { gig: IGigItem }) {
 
         <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
           <span className="text-xs text-gray-500 truncate max-w-[120px]">
-            By {gig.freelancerId?.name || 'Freelancer'}
+            By {sellerName}
           </span>
           <div className="text-right">
             <span className="text-[10px] uppercase text-gray-400 block leading-none">Starting at</span>
@@ -64,6 +72,6 @@ export default function GigCard({ gig }: { gig: IGigItem }) {
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
