@@ -1,6 +1,8 @@
 'use server';
 
 import bcrypt from 'bcryptjs';
+import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
 import { connectDB } from '@/lib/mongodb';
 import { User } from '@/models/User';
 import { RegisterSchema, LoginSchema } from '@/lib/validations/auth';
@@ -102,4 +104,37 @@ export async function loginAction(formData: unknown) {
 export async function logoutAction() {
   await removeAuthCookie();
   return { success: true };
+}
+
+// Current logged in user-ina role haagu details check maadalu ee function annu serisi:
+export async function getCurrentUser() {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+
+    if (!token) {
+      return { success: false, user: null };
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+      userId: string;
+      email: string;
+      role: string;
+    };
+
+    await connectDB();
+    const user = await User.findById(decoded.userId).select('name email role avatar').lean();
+
+    if (!user) {
+      return { success: false, user: null };
+    }
+
+    return {
+      success: true,
+      user: JSON.parse(JSON.stringify(user)),
+    };
+  } catch (error) {
+    console.error('Error fetching current user:', error);
+    return { success: false, user: null };
+  }
 }

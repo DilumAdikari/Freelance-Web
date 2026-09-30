@@ -1,16 +1,64 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { getCurrentUser } from '@/actions/auth';
 
 interface NavbarProps {
   isLoggedIn?: boolean;
-  userRole?: 'FREELANCER' | 'CLIENT';
+  userRole?: 'FREELANCER' | 'CLIENT' | 'freelancer' | 'client' | string;
+  userAvatar?: string;
+  userName?: string;
+}
+
+interface IUserState {
+  name: string;
+  email: string;
+  role: string;
+  avatar?: string;
 }
 
 export default function Navbar({
-  isLoggedIn = false,
-  userRole = 'FREELANCER',
-}: NavbarProps) {
+  isLoggedIn: initialLoggedIn,
+  userRole: initialRole,
+  userAvatar: initialAvatar,
+  userName: initialName,
+}: NavbarProps = {}) {
+  const [user, setUser] = useState<IUserState | null>(
+    initialLoggedIn
+      ? {
+          name: initialName || 'User',
+          email: '',
+          role: initialRole || 'freelancer',
+          avatar: initialAvatar || '',
+        }
+      : null
+  );
+  const [loading, setLoading] = useState(!initialLoggedIn);
+
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const res = await getCurrentUser();
+        if (res.success && res.user) {
+          setUser(res.user);
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch user in navbar:', err);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    checkAuth();
+  }, []);
+
+  const isFreelancer = user?.role?.toLowerCase() === 'freelancer';
+  const isClient = user?.role?.toLowerCase() === 'client';
+
   return (
     <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
@@ -19,43 +67,51 @@ export default function Navbar({
           Vision<span style={{ color: '#178f23' }}>LK</span>
         </Link>
 
-        {/* Right Side Navigation Actions */}
+        {/* Right Side Navigation */}
         <div className="flex items-center gap-4 sm:gap-6">
-          {isLoggedIn ? (
-            // 1. LOGGED-IN USERS (Marketplace View)
+          {loading ? (
+            <div className="h-8 w-20 animate-pulse rounded-lg bg-gray-100" />
+          ) : user ? (
+            // ================= LOGGED-IN VIEW =================
             <>
               <Link
-                href={userRole === 'CLIENT' ? '/dashboard/client' : '/dashboard/freelancer'}
+                href={isClient ? '/dashboard/client' : '/dashboard/freelancer'}
                 className="text-xs font-bold text-gray-700 hover:text-black transition"
               >
                 Dashboard
               </Link>
 
               <Link
-                href="/dashboard/freelancer/orders"
+                href={isClient ? '/dashboard/client/orders' : '/dashboard/freelancer/orders'}
                 className="text-xs font-semibold text-gray-600 hover:text-black transition"
               >
                 Orders
               </Link>
 
-              <Link
-                href="/dashboard/freelancer/gigs/new"
-                className="hidden sm:inline-block rounded-xl border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-black hover:text-black transition"
-              >
-                + Post a Gig
-              </Link>
+              {isFreelancer && (
+                <Link
+                  href="/dashboard/freelancer/gigs/new"
+                  className="hidden sm:inline-block rounded-xl border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-black hover:text-black transition"
+                >
+                  + Post a Gig
+                </Link>
+              )}
 
-              {/* User Avatar & Profile Link */}
               <Link
-                href="/dashboard/freelancer/profile"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-xs font-bold text-white shadow-sm ring-2 ring-transparent transition hover:ring-[#178f23]"
+                href={isClient ? '/dashboard/client' : '/dashboard/freelancer/profile'}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-xs font-bold text-white shadow-sm ring-2 ring-transparent transition hover:ring-[#178f23] overflow-hidden"
                 title="Profile & Settings"
               >
-                D
+                {user.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+                ) : (
+                  user.name ? user.name.charAt(0).toUpperCase() : 'U'
+                )}
               </Link>
             </>
           ) : (
-            // 2. GUEST / LOGGED-OUT USERS (Landing Page View)
+            // ================= GUEST / LOGGED-OUT VIEW =================
             <>
               <Link
                 href="/login"
