@@ -212,12 +212,12 @@ export default async function GigDetailsPage({ params }: GigPageProps) {
                   </button>
                 </form>
 
-                <button
-                  type="button"
-                  className="w-full rounded-2xl border border-gray-300 bg-white py-3 text-xs font-bold text-gray-700 hover:border-black transition"
+                <Link
+                  href={`/inbox/${seller?._id || gig.freelancerId || gig.userId}?gigId=${id}`}
+                  className="block w-full text-center rounded-2xl border border-gray-300 bg-white py-3 text-xs font-bold text-gray-700 hover:border-black transition"
                 >
                   Contact Seller
-                </button>
+                </Link>
               </div>
 
               <div className="border-t border-gray-100 pt-4 text-center">
