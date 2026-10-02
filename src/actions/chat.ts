@@ -17,6 +17,21 @@ export interface IConversationSummary {
   lastMessageTime: string;
 }
 
+interface IPopulatedUser {
+  _id: mongoose.Types.ObjectId | string;
+  name?: string;
+  email?: string;
+  role?: string;
+}
+
+interface IPopulatedMessage {
+  _id: mongoose.Types.ObjectId | string;
+  senderId: IPopulatedUser | mongoose.Types.ObjectId | string;
+  receiverId: IPopulatedUser | mongoose.Types.ObjectId | string;
+  text: string;
+  createdAt: string | Date;
+}
+
 async function getUserIdFromToken(): Promise<string | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get('auth_token')?.value;
@@ -30,7 +45,7 @@ async function getUserIdFromToken(): Promise<string | null> {
   }
 }
 
-// 1. තනි පුද්ගලයෙකු සමඟ ඇති messages ලබා ගැනීම
+
 export async function getConversation(receiverId: string) {
   try {
     const currentUserId = await getUserIdFromToken();
@@ -61,7 +76,7 @@ export async function getConversation(receiverId: string) {
   }
 }
 
-// 2. අලුත් message එකක් යැවීම සහ Pusher මඟින් trigger කිරීම
+
 export async function sendMessageAction(receiverId: string, text: string, gigId?: string) {
   try {
     const senderId = await getUserIdFromToken();
@@ -93,7 +108,7 @@ export async function sendMessageAction(receiverId: string, text: string, gigId?
   }
 }
 
-// 3. User ගේ සියලුම active conversations list එක ලබා ගැනීම (Missing export)
+
 export async function getUserConversations(): Promise<{
   success: boolean;
   conversations: IConversationSummary[];
@@ -109,7 +124,7 @@ export async function getUserConversations(): Promise<{
 
     const currentUserObjId = new mongoose.Types.ObjectId(currentUserId);
 
-    const messages = await Message.find({
+    const rawMessages = await Message.find({
       $or: [{ senderId: currentUserObjId }, { receiverId: currentUserObjId }],
     })
       .sort({ createdAt: -1 })
@@ -117,13 +132,15 @@ export async function getUserConversations(): Promise<{
       .populate('receiverId', 'name email role')
       .lean();
 
+    const messages = rawMessages as unknown as IPopulatedMessage[];
     const conversationsMap = new Map<string, IConversationSummary>();
 
     for (const msg of messages) {
-      const sender = msg.senderId as any;
-      const receiver = msg.receiverId as any;
+      const sender = typeof msg.senderId === 'object' && msg.senderId !== null ? (msg.senderId as IPopulatedUser) : null;
+      const receiver = typeof msg.receiverId === 'object' && msg.receiverId !== null ? (msg.receiverId as IPopulatedUser) : null;
 
-      const isSender = String(sender?._id || sender) === currentUserId;
+      const senderIdStr = sender?._id ? String(sender._id) : String(msg.senderId);
+      const isSender = senderIdStr === currentUserId;
       const otherUser = isSender ? receiver : sender;
 
       if (!otherUser || !otherUser._id) continue;
@@ -136,8 +153,8 @@ export async function getUserConversations(): Promise<{
           userName: otherUser.name || 'User',
           userEmail: otherUser.email || '',
           userRole: otherUser.role || 'client',
-          lastMessage: (msg as any).text,
-          lastMessageTime: new Date((msg as any).createdAt).toLocaleDateString('en-US', {
+          lastMessage: msg.text,
+          lastMessageTime: new Date(msg.createdAt).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
             hour: '2-digit',
@@ -157,7 +174,7 @@ export async function getUserConversations(): Promise<{
   }
 }
 
-// 4. කියවා නැති messages ගණන ලබා ගැනීම
+
 export async function getUnreadMessagesCount(): Promise<{ success: boolean; count: number }> {
   try {
     const currentUserId = await getUserIdFromToken();
