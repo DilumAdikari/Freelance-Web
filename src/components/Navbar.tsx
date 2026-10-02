@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getCurrentUser } from '@/actions/auth';
+import MessageNotificationIcon from '@/components/MessageNotificationIcon';
 
 interface NavbarProps {
   isLoggedIn?: boolean;
@@ -88,6 +89,9 @@ export default function Navbar({
                 Orders
               </Link>
 
+              {/* Mail / Messages Notification Icon */}
+              <MessageNotificationIcon />
+
               {isFreelancer && (
                 <Link
                   href="/dashboard/freelancer/gigs/new"
@@ -99,7 +103,7 @@ export default function Navbar({
 
               <Link
                 href={isClient ? '/dashboard/client' : '/dashboard/freelancer/profile'}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-xs font-bold text-white shadow-sm ring-2 ring-transparent transition hover:ring-[#178f23] overflow-hidden"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-xs font-bold text-white shadow-xs ring-2 ring-transparent transition hover:ring-[#178f23] overflow-hidden"
                 title="Profile & Settings"
               >
                 {user.avatar ? (
