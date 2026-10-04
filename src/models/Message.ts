@@ -5,6 +5,7 @@ export interface IMessage extends Document {
   receiverId: mongoose.Types.ObjectId;
   gigId?: mongoose.Types.ObjectId;
   text: string;
+  isRead: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -15,6 +16,7 @@ const MessageSchema = new Schema<IMessage>(
     receiverId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     gigId: { type: Schema.Types.ObjectId, ref: 'Gig' },
     text: { type: String, required: true, trim: true },
+    isRead: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

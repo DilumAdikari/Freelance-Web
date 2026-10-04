@@ -3,27 +3,54 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getUnreadMessagesCount } from '@/actions/chat';
+import { pusherClient } from '@/lib/pusher-client';
 
-export default function MessageNotificationIcon() {
+interface MessageNotificationIconProps {
+  currentUserId?: string;
+}
+
+export default function MessageNotificationIcon({ currentUserId }: MessageNotificationIconProps) {
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
   useEffect(() => {
+  
     async function fetchCount() {
-      const res = await getUnreadMessagesCount();
-      if (res.success) {
-        setUnreadCount(res.count);
+      try {
+        const res = await getUnreadMessagesCount();
+        if (res.success) {
+          setUnreadCount(res.count);
+        }
+      } catch (err) {
+        console.error('Failed to fetch unread count:', err);
       }
     }
 
     fetchCount();
-    const interval = setInterval(fetchCount, 5000); // තත්පර 5කට වරක් අලුත් මැසේජ් පරීක්ෂා කරයි
+    const interval = setInterval(fetchCount, 15000); 
+
+
+    if (currentUserId) {
+      const channelName = `user-${currentUserId}`;
+      const channel = pusherClient.subscribe(channelName);
+
+      channel.bind('notification', () => {
+        setUnreadCount((prev) => prev + 1);
+      });
+
+      return () => {
+        clearInterval(interval);
+        channel.unbind_all();
+        pusherClient.unsubscribe(channelName);
+      };
+    }
+
     return () => clearInterval(interval);
-  }, []);
+  }, [currentUserId]);
 
   return (
     <Link
       href="/inbox"
-      className="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-700 hover:text-black"
+      className="relative flex h-10 w-10 items-center justify-center rounded-full text-gray-700 transition hover:bg-gray-100 hover:text-black"
       title="Messages"
     >
       {/* Mail Icon SVG */}
@@ -42,9 +69,9 @@ export default function MessageNotificationIcon() {
         />
       </svg>
 
-      {/* Unread Notification Badge */}
+      {/* Red Notification Badge */}
       {unreadCount > 0 && (
-        <span className="absolute top-1.5 right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold text-white shadow-xs">
+        <span className="absolute top-1 right-1 flex h-4 min-w-[16px] animate-pulse items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white shadow-xs">
           {unreadCount > 9 ? '9+' : unreadCount}
         </span>
       )}

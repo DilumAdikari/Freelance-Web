@@ -22,6 +22,7 @@ interface IPopulatedUser {
   name?: string;
   email?: string;
   role?: string;
+  avatar?: string;
 }
 
 interface IPopulatedMessage {
@@ -86,17 +87,29 @@ export async function sendMessageAction(receiverId: string, text: string, gigId?
 
     await connectDB();
 
+    const senderUser = await User.findById(senderId).select('name avatar').lean();
+
     const newMessage = await Message.create({
       senderId: new mongoose.Types.ObjectId(senderId),
       receiverId: new mongoose.Types.ObjectId(receiverId),
       gigId: gigId ? new mongoose.Types.ObjectId(gigId) : undefined,
       text: text.trim(),
+      isRead: false,
     });
 
     const serializedMsg = JSON.parse(JSON.stringify(newMessage));
 
+    // Chat Room Event Trigger
     const chatRoomId = [senderId, receiverId].sort().join('-');
     await pusherServer.trigger(`chat-${chatRoomId}`, 'new-message', serializedMsg);
+
+    // Receiver Personal Notification Event Trigger
+    await pusherServer.trigger(`user-${receiverId}`, 'notification', {
+      senderId,
+      senderName: senderUser?.name || 'User',
+      text: text.trim(),
+      createdAt: serializedMsg.createdAt,
+    });
 
     return {
       success: true,
@@ -191,5 +204,29 @@ export async function getUnreadMessagesCount(): Promise<{ success: boolean; coun
   } catch (error) {
     console.error('Error fetching unread count:', error);
     return { success: false, count: 0 };
+  }
+}
+
+
+export async function markMessagesAsRead(senderId: string) {
+  try {
+    const currentUserId = await getUserIdFromToken();
+    if (!currentUserId) return { success: false };
+
+    await connectDB();
+
+    await Message.updateMany(
+      {
+        senderId: new mongoose.Types.ObjectId(senderId),
+        receiverId: new mongoose.Types.ObjectId(currentUserId),
+        isRead: false,
+      },
+      { $set: { isRead: true } }
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to mark read:', error);
+    return { success: false };
   }
 }
