@@ -13,7 +13,6 @@ export default function MessageNotificationIcon({ currentUserId }: MessageNotifi
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
   useEffect(() => {
-  
     async function fetchCount() {
       try {
         const res = await getUnreadMessagesCount();
@@ -26,20 +25,26 @@ export default function MessageNotificationIcon({ currentUserId }: MessageNotifi
     }
 
     fetchCount();
-    const interval = setInterval(fetchCount, 15000); 
-
+    const interval = setInterval(fetchCount, 15000);
 
     if (currentUserId) {
       const channelName = `user-${currentUserId}`;
       const channel = pusherClient.subscribe(channelName);
 
+      
       channel.bind('notification', () => {
         setUnreadCount((prev) => prev + 1);
       });
 
+      
+      channel.bind('read-notifications', () => {
+        setUnreadCount(0);
+      });
+
       return () => {
         clearInterval(interval);
-        channel.unbind_all();
+        channel.unbind('notification');
+        channel.unbind('read-notifications');
         pusherClient.unsubscribe(channelName);
       };
     }
@@ -69,10 +74,11 @@ export default function MessageNotificationIcon({ currentUserId }: MessageNotifi
         />
       </svg>
 
-      {/* Red Notification Badge */}
+      {/* Fiverr Style Little Red Dot */}
       {unreadCount > 0 && (
-        <span className="absolute top-1 right-1 flex h-4 min-w-[16px] animate-pulse items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white shadow-xs">
-          {unreadCount > 9 ? '9+' : unreadCount}
+        <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-600 border border-white"></span>
         </span>
       )}
     </Link>

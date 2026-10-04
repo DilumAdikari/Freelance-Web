@@ -106,7 +106,7 @@ export async function logoutAction() {
   return { success: true };
 }
 
-// Current logged in user-ina role haagu details check maadalu ee function annu serisi:
+
 export async function getCurrentUser() {
   try {
     const cookieStore = await cookies();
@@ -131,7 +131,13 @@ export async function getCurrentUser() {
 
     return {
       success: true,
-      user: JSON.parse(JSON.stringify(user)),
+      user: {
+        _id: String((user as { _id: unknown })._id),
+        name: (user as { name?: string }).name || 'User',
+        email: (user as { email?: string }).email || '',
+        role: (user as { role?: string }).role || 'client',
+        avatar: (user as { avatar?: string }).avatar || '',
+      },
     };
   } catch (error) {
     console.error('Error fetching current user:', error);

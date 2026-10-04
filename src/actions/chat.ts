@@ -208,6 +208,7 @@ export async function getUnreadMessagesCount(): Promise<{ success: boolean; coun
 }
 
 
+
 export async function markMessagesAsRead(senderId: string) {
   try {
     const currentUserId = await getUserIdFromToken();
@@ -223,6 +224,11 @@ export async function markMessagesAsRead(senderId: string) {
       },
       { $set: { isRead: true } }
     );
+
+    
+    await pusherServer.trigger(`user-${currentUserId}`, 'read-notifications', {
+      readBy: currentUserId,
+    });
 
     return { success: true };
   } catch (error) {
