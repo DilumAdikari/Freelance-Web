@@ -46,11 +46,10 @@ async function getUserIdFromToken(): Promise<string | null> {
   }
 }
 
-
 export async function getConversation(receiverId: string) {
   try {
     const currentUserId = await getUserIdFromToken();
-    if (!currentUserId) return { success: false, error: 'Unauthorized', messages: [] };
+    if (!currentUserId || !receiverId) return { success: false, error: 'Unauthorized', messages: [] };
 
     await connectDB();
 
@@ -77,7 +76,6 @@ export async function getConversation(receiverId: string) {
   }
 }
 
-
 export async function sendMessageAction(receiverId: string, text: string, gigId?: string) {
   try {
     const senderId = await getUserIdFromToken();
@@ -99,11 +97,11 @@ export async function sendMessageAction(receiverId: string, text: string, gigId?
 
     const serializedMsg = JSON.parse(JSON.stringify(newMessage));
 
-    // Chat Room Event Trigger
+    // 1. Chat Room Event Trigger
     const chatRoomId = [senderId, receiverId].sort().join('-');
     await pusherServer.trigger(`chat-${chatRoomId}`, 'new-message', serializedMsg);
 
-    // Receiver Personal Notification Event Trigger
+    // 2. Receiver Personal Notification Event Trigger
     await pusherServer.trigger(`user-${receiverId}`, 'notification', {
       senderId,
       senderName: senderUser?.name || 'User',
@@ -120,7 +118,6 @@ export async function sendMessageAction(receiverId: string, text: string, gigId?
     return { success: false, error: 'Failed to send message' };
   }
 }
-
 
 export async function getUserConversations(): Promise<{
   success: boolean;
@@ -183,7 +180,7 @@ export async function getUserConversations(): Promise<{
     };
   } catch (error) {
     console.error('Error fetching conversations:', error);
-    return { success: false, conversations: [], error: 'Failed to load conversations' };
+    return { success: false, error: 'Failed to load conversations' };
   }
 }
 
@@ -197,7 +194,7 @@ export async function getUnreadMessagesCount(): Promise<{ success: boolean; coun
 
     const count = await Message.countDocuments({
       receiverId: new mongoose.Types.ObjectId(currentUserId),
-      isRead: false,
+      isRead: { $ne: true },
     });
 
     return { success: true, count };
@@ -208,11 +205,12 @@ export async function getUnreadMessagesCount(): Promise<{ success: boolean; coun
 }
 
 
-
 export async function markMessagesAsRead(senderId: string) {
   try {
     const currentUserId = await getUserIdFromToken();
-    if (!currentUserId) return { success: false };
+    if (!currentUserId || !senderId || !mongoose.Types.ObjectId.isValid(senderId)) {
+      return { success: false };
+    }
 
     await connectDB();
 
@@ -220,7 +218,7 @@ export async function markMessagesAsRead(senderId: string) {
       {
         senderId: new mongoose.Types.ObjectId(senderId),
         receiverId: new mongoose.Types.ObjectId(currentUserId),
-        isRead: false,
+        isRead: { $ne: true },
       },
       { $set: { isRead: true } }
     );

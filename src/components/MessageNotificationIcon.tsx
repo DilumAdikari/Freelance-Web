@@ -25,31 +25,40 @@ export default function MessageNotificationIcon({ currentUserId }: MessageNotifi
     }
 
     fetchCount();
-    const interval = setInterval(fetchCount, 15000);
+    const interval = setInterval(fetchCount, 30000);
 
+    // 1. Browser Event: Chat page එකට ගිය සැණින් Dot එක ක්ෂණිකව අයින් කිරීමට
+    const handleLocalRead = () => {
+      setUnreadCount(0);
+    };
+    window.addEventListener('messages-read-locally', handleLocalRead);
+
+    // 2. Pusher Events
     if (currentUserId) {
       const channelName = `user-${currentUserId}`;
       const channel = pusherClient.subscribe(channelName);
 
-      
       channel.bind('notification', () => {
         setUnreadCount((prev) => prev + 1);
       });
 
-      
       channel.bind('read-notifications', () => {
         setUnreadCount(0);
       });
 
       return () => {
         clearInterval(interval);
+        window.removeEventListener('messages-read-locally', handleLocalRead);
         channel.unbind('notification');
         channel.unbind('read-notifications');
         pusherClient.unsubscribe(channelName);
       };
     }
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('messages-read-locally', handleLocalRead);
+    };
   }, [currentUserId]);
 
   return (
