@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getClientDashboardData } from '@/actions/clientDashboard';
@@ -27,12 +29,17 @@ export default function ClientDashboardPage() {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const res = await getClientDashboardData();
-      if (res.success) {
-        setMetrics(res.metrics);
-        setRecentOrders(res.recentOrders);
+      try {
+        const res = await getClientDashboardData();
+        if (res.success) {
+          setMetrics(res.metrics);
+          setRecentOrders(res.recentOrders);
+        }
+      } catch (err) {
+        console.error('Failed to load client dashboard data:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     loadData();
   }, []);
@@ -93,7 +100,7 @@ export default function ClientDashboardPage() {
                 href="/"
                 className="rounded-xl bg-black px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition hover:bg-gray-800"
               >
-                Explore Services ↗
+                Explore Services &nearr;
               </Link>
             </div>
           </header>
