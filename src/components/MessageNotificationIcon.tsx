@@ -3,27 +3,68 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getUnreadMessagesCount } from '@/actions/chat';
+import { pusherClient } from '@/lib/pusher-client';
 
-export default function MessageNotificationIcon() {
+interface MessageNotificationIconProps {
+  currentUserId?: string;
+}
+
+export default function MessageNotificationIcon({ currentUserId }: MessageNotificationIconProps) {
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
   useEffect(() => {
     async function fetchCount() {
-      const res = await getUnreadMessagesCount();
-      if (res.success) {
-        setUnreadCount(res.count);
+      try {
+        const res = await getUnreadMessagesCount();
+        if (res.success) {
+          setUnreadCount(res.count);
+        }
+      } catch (err) {
+        console.error('Failed to fetch unread count:', err);
       }
     }
 
     fetchCount();
-    const interval = setInterval(fetchCount, 5000); // තත්පර 5කට වරක් අලුත් මැසේජ් පරීක්ෂා කරයි
-    return () => clearInterval(interval);
-  }, []);
+    const interval = setInterval(fetchCount, 30000);
+
+    
+    const handleLocalRead = () => {
+      setUnreadCount(0);
+    };
+    window.addEventListener('messages-read-locally', handleLocalRead);
+
+    // 2. Pusher Events
+    if (currentUserId) {
+      const channelName = `user-${currentUserId}`;
+      const channel = pusherClient.subscribe(channelName);
+
+      channel.bind('notification', () => {
+        setUnreadCount((prev) => prev + 1);
+      });
+
+      channel.bind('read-notifications', () => {
+        setUnreadCount(0);
+      });
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('messages-read-locally', handleLocalRead);
+        channel.unbind('notification');
+        channel.unbind('read-notifications');
+        pusherClient.unsubscribe(channelName);
+      };
+    }
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('messages-read-locally', handleLocalRead);
+    };
+  }, [currentUserId]);
 
   return (
     <Link
       href="/inbox"
-      className="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-700 hover:text-black"
+      className="relative flex h-10 w-10 items-center justify-center rounded-full text-gray-700 transition hover:bg-gray-100 hover:text-black"
       title="Messages"
     >
       {/* Mail Icon SVG */}
@@ -42,10 +83,11 @@ export default function MessageNotificationIcon() {
         />
       </svg>
 
-      {/* Unread Notification Badge */}
+      {/* Fiverr Style Little Red Dot */}
       {unreadCount > 0 && (
-        <span className="absolute top-1.5 right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold text-white shadow-xs">
-          {unreadCount > 9 ? '9+' : unreadCount}
+        <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-600 border border-white"></span>
         </span>
       )}
     </Link>

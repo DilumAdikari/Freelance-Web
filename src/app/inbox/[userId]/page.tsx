@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
-import { getConversation, sendMessageAction } from '@/actions/chat';
+import { getConversation, sendMessageAction, markMessagesAsRead } from '@/actions/chat';
 import { pusherClient } from '@/lib/pusher-client';
 
 interface IMessageItem {
@@ -25,7 +25,7 @@ interface IOtherUser {
 export default function ChatPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const receiverId = params.userId as string;
+  const receiverId = (params?.userId as string) || '';
   const gigId = searchParams.get('gigId') || undefined;
 
   const [messages, setMessages] = useState<IMessageItem[]>([]);
@@ -43,14 +43,25 @@ export default function ChatPage() {
   useEffect(() => {
     async function loadChat() {
       if (!receiverId) return;
-      const res = await getConversation(receiverId);
-      if (res.success) {
-        setMessages(res.messages);
-        setCurrentUserId(res.currentUserId || '');
-        setOtherUser(res.otherUser);
+      try {
+        const res = await getConversation(receiverId);
+        if (res.success) {
+          setMessages(res.messages);
+          setCurrentUserId(res.currentUserId || '');
+          setOtherUser(res.otherUser);
+
+          
+          await markMessagesAsRead(receiverId);
+
+          
+          window.dispatchEvent(new Event('messages-read-locally'));
+        }
+      } catch (err) {
+        console.error('Failed to load conversation:', err);
+      } finally {
+        setLoading(false);
+        setTimeout(scrollToBottom, 100);
       }
-      setLoading(false);
-      setTimeout(scrollToBottom, 100);
     }
 
     loadChat();
@@ -69,11 +80,17 @@ export default function ChatPage() {
         if (prev.some((m) => m._id === data._id)) return prev;
         return [...prev, data];
       });
+
+      if (data.senderId === receiverId) {
+        markMessagesAsRead(receiverId);
+        window.dispatchEvent(new Event('messages-read-locally'));
+      }
+
       setTimeout(scrollToBottom, 50);
     });
 
     return () => {
-      channel.unbind_all();
+      channel.unbind('new-message');
       pusherClient.unsubscribe(channelName);
     };
   }, [currentUserId, receiverId]);
@@ -106,7 +123,7 @@ export default function ChatPage() {
       <Navbar />
 
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col overflow-hidden px-4 py-6 sm:px-6">
-        <div className="flex flex-1 flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-1 flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-xs">
           {/* Top Bar */}
           <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
             <div className="flex items-center gap-3">
@@ -124,7 +141,7 @@ export default function ChatPage() {
                 href={`/gigs/${gigId}`}
                 className="rounded-xl border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-black transition"
               >
-                View Gig ↗
+                View Gig &nearr;
               </Link>
             )}
           </div>
@@ -139,7 +156,9 @@ export default function ChatPage() {
               <div className="flex h-full flex-col items-center justify-center text-center">
                 <span className="text-3xl">💬</span>
                 <p className="mt-2 text-xs font-semibold text-gray-500">Start the conversation</p>
-                <p className="text-[11px] text-gray-400">Ask about requirements, custom offers, or timelines.</p>
+                <p className="text-[11px] text-gray-400">
+                  Ask about requirements, custom offers, or timelines.
+                </p>
               </div>
             ) : (
               messages.map((msg) => {
@@ -159,7 +178,10 @@ export default function ChatPage() {
                       {msg.text}
                     </div>
                     <span className="mt-1 text-[10px] text-gray-400">
-                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(msg.createdAt).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                     </span>
                   </div>
                 );

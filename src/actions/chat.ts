@@ -22,6 +22,7 @@ interface IPopulatedUser {
   name?: string;
   email?: string;
   role?: string;
+  avatar?: string;
 }
 
 interface IPopulatedMessage {
@@ -45,11 +46,10 @@ async function getUserIdFromToken(): Promise<string | null> {
   }
 }
 
-
 export async function getConversation(receiverId: string) {
   try {
     const currentUserId = await getUserIdFromToken();
-    if (!currentUserId) return { success: false, error: 'Unauthorized', messages: [] };
+    if (!currentUserId || !receiverId) return { success: false, error: 'Unauthorized', messages: [] };
 
     await connectDB();
 
@@ -76,7 +76,6 @@ export async function getConversation(receiverId: string) {
   }
 }
 
-
 export async function sendMessageAction(receiverId: string, text: string, gigId?: string) {
   try {
     const senderId = await getUserIdFromToken();
@@ -86,17 +85,29 @@ export async function sendMessageAction(receiverId: string, text: string, gigId?
 
     await connectDB();
 
+    const senderUser = await User.findById(senderId).select('name avatar').lean();
+
     const newMessage = await Message.create({
       senderId: new mongoose.Types.ObjectId(senderId),
       receiverId: new mongoose.Types.ObjectId(receiverId),
       gigId: gigId ? new mongoose.Types.ObjectId(gigId) : undefined,
       text: text.trim(),
+      isRead: false,
     });
 
     const serializedMsg = JSON.parse(JSON.stringify(newMessage));
 
+    // 1. Chat Room Event Trigger
     const chatRoomId = [senderId, receiverId].sort().join('-');
     await pusherServer.trigger(`chat-${chatRoomId}`, 'new-message', serializedMsg);
+
+    // 2. Receiver Personal Notification Event Trigger
+    await pusherServer.trigger(`user-${receiverId}`, 'notification', {
+      senderId,
+      senderName: senderUser?.name || 'User',
+      text: text.trim(),
+      createdAt: serializedMsg.createdAt,
+    });
 
     return {
       success: true,
@@ -107,7 +118,6 @@ export async function sendMessageAction(receiverId: string, text: string, gigId?
     return { success: false, error: 'Failed to send message' };
   }
 }
-
 
 export async function getUserConversations(): Promise<{
   success: boolean;
@@ -170,7 +180,7 @@ export async function getUserConversations(): Promise<{
     };
   } catch (error) {
     console.error('Error fetching conversations:', error);
-    return { success: false, conversations: [], error: 'Failed to load conversations' };
+    return { success: false,conversations: [], error: 'Failed to fetch conversations' };
   }
 }
 
@@ -184,12 +194,43 @@ export async function getUnreadMessagesCount(): Promise<{ success: boolean; coun
 
     const count = await Message.countDocuments({
       receiverId: new mongoose.Types.ObjectId(currentUserId),
-      isRead: false,
+      isRead: { $ne: true },
     });
 
     return { success: true, count };
   } catch (error) {
     console.error('Error fetching unread count:', error);
     return { success: false, count: 0 };
+  }
+}
+
+
+export async function markMessagesAsRead(senderId: string) {
+  try {
+    const currentUserId = await getUserIdFromToken();
+    if (!currentUserId || !senderId || !mongoose.Types.ObjectId.isValid(senderId)) {
+      return { success: false };
+    }
+
+    await connectDB();
+
+    await Message.updateMany(
+      {
+        senderId: new mongoose.Types.ObjectId(senderId),
+        receiverId: new mongoose.Types.ObjectId(currentUserId),
+        isRead: { $ne: true },
+      },
+      { $set: { isRead: true } }
+    );
+
+    
+    await pusherServer.trigger(`user-${currentUserId}`, 'read-notifications', {
+      readBy: currentUserId,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to mark read:', error);
+    return { success: false };
   }
 }
