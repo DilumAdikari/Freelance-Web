@@ -180,7 +180,7 @@ export async function getUserConversations(): Promise<{
     };
   } catch (error) {
     console.error('Error fetching conversations:', error);
-    return { success: false, error: 'Failed to load conversations' };
+    return { success: false,conversations: [], error: 'Failed to fetch conversations' };
   }
 }
 

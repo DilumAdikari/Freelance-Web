@@ -27,7 +27,7 @@ export default function MessageNotificationIcon({ currentUserId }: MessageNotifi
     fetchCount();
     const interval = setInterval(fetchCount, 30000);
 
-    // 1. Browser Event: Chat page එකට ගිය සැණින් Dot එක ක්ෂණිකව අයින් කිරීමට
+    
     const handleLocalRead = () => {
       setUnreadCount(0);
     };

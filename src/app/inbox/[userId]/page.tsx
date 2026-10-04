@@ -50,10 +50,10 @@ export default function ChatPage() {
           setCurrentUserId(res.currentUserId || '');
           setOtherUser(res.otherUser);
 
-          // 1. Database එකේ messages read ලෙස update කිරීම
+          
           await markMessagesAsRead(receiverId);
 
-          // 2. Navbar එකේ තියෙන රතු dot එක ක්ෂණිකව අයින් කිරීමට window event එකක් trigger කිරීම
+          
           window.dispatchEvent(new Event('messages-read-locally'));
         }
       } catch (err) {
@@ -81,7 +81,6 @@ export default function ChatPage() {
         return [...prev, data];
       });
 
-      // ඔබ දැනටමත් chat එකේ සිටියදී එම පුද්ගලයාගෙන්ම අලුත් message එකක් පැමිණියහොත් එයද auto read කිරීම
       if (data.senderId === receiverId) {
         markMessagesAsRead(receiverId);
         window.dispatchEvent(new Event('messages-read-locally'));
