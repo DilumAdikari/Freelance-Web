@@ -13,6 +13,8 @@ export interface IConversationSummary {
   userName: string;
   userEmail: string;
   userRole: string;
+  userAvatar?: string;
+  lastActiveAt?: string | Date; // <-- Online status සඳහා එක් කළා
   lastMessage: string;
   lastMessageTime: string;
 }
@@ -23,6 +25,7 @@ interface IPopulatedUser {
   email?: string;
   role?: string;
   avatar?: string;
+  lastActiveAt?: string | Date; // <-- Populated user type එකට එක් කළා
 }
 
 interface IPopulatedMessage {
@@ -53,7 +56,10 @@ export async function getConversation(receiverId: string) {
 
     await connectDB();
 
-    const otherUser = await User.findById(receiverId).select('name email role avatar').lean();
+    // lastActiveAt මෙතැනට එක් කළා
+    const otherUser = await User.findById(receiverId)
+      .select('name email role avatar lastActiveAt')
+      .lean();
 
     const messages = await Message.find({
       $or: [
@@ -138,8 +144,8 @@ export async function getUserConversations(): Promise<{
       $or: [{ senderId: currentUserObjId }, { receiverId: currentUserObjId }],
     })
       .sort({ createdAt: -1 })
-      .populate('senderId', 'name email role')
-      .populate('receiverId', 'name email role')
+      .populate('senderId', 'name email role avatar lastActiveAt') // <-- avatar & lastActiveAt එක් කළා
+      .populate('receiverId', 'name email role avatar lastActiveAt') // <-- avatar & lastActiveAt එක් කළා
       .lean();
 
     const messages = rawMessages as unknown as IPopulatedMessage[];
@@ -163,6 +169,8 @@ export async function getUserConversations(): Promise<{
           userName: otherUser.name || 'User',
           userEmail: otherUser.email || '',
           userRole: otherUser.role || 'client',
+          userAvatar: otherUser.avatar || '',
+          lastActiveAt: otherUser.lastActiveAt, // <-- Conversation එකට pass කළා
           lastMessage: msg.text,
           lastMessageTime: new Date(msg.createdAt).toLocaleDateString('en-US', {
             month: 'short',
@@ -180,10 +188,9 @@ export async function getUserConversations(): Promise<{
     };
   } catch (error) {
     console.error('Error fetching conversations:', error);
-    return { success: false,conversations: [], error: 'Failed to fetch conversations' };
+    return { success: false, conversations: [], error: 'Failed to fetch conversations' };
   }
 }
-
 
 export async function getUnreadMessagesCount(): Promise<{ success: boolean; count: number }> {
   try {
@@ -204,7 +211,6 @@ export async function getUnreadMessagesCount(): Promise<{ success: boolean; coun
   }
 }
 
-
 export async function markMessagesAsRead(senderId: string) {
   try {
     const currentUserId = await getUserIdFromToken();
@@ -223,7 +229,6 @@ export async function markMessagesAsRead(senderId: string) {
       { $set: { isRead: true } }
     );
 
-    
     await pusherServer.trigger(`user-${currentUserId}`, 'read-notifications', {
       readBy: currentUserId,
     });

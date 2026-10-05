@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useTransition } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
@@ -13,6 +13,7 @@ interface IMessageItem {
   receiverId: string;
   text: string;
   createdAt: string;
+  isOptimistic?: boolean;
 }
 
 interface IOtherUser {
@@ -33,38 +34,46 @@ export default function ChatPage() {
   const [otherUser, setOtherUser] = useState<IOtherUser | null>(null);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
+  const [isSending, startSendTransition] = useTransition();
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
+  // Initial Data Fetch
   useEffect(() => {
+    let isMounted = true;
+
     async function loadChat() {
       if (!receiverId) return;
+
       try {
         const res = await getConversation(receiverId);
-        if (res.success) {
-          setMessages(res.messages);
+        if (res.success && isMounted) {
+          setMessages(res.messages || []);
           setCurrentUserId(res.currentUserId || '');
-          setOtherUser(res.otherUser);
+          setOtherUser(res.otherUser || null);
 
-          
           await markMessagesAsRead(receiverId);
-
-          
           window.dispatchEvent(new Event('messages-read-locally'));
         }
       } catch (err) {
         console.error('Failed to load conversation:', err);
       } finally {
-        setLoading(false);
-        setTimeout(scrollToBottom, 100);
+        if (isMounted) {
+          setLoading(false);
+          requestAnimationFrame(() => scrollToBottom('auto'));
+        }
       }
     }
 
     loadChat();
+
+    return () => {
+      isMounted = false;
+    };
   }, [receiverId]);
 
   // Real-time Pusher Event Listener
@@ -75,10 +84,13 @@ export default function ChatPage() {
     const channelName = `chat-${chatRoomId}`;
     const channel = pusherClient.subscribe(channelName);
 
-    channel.bind('new-message', (data: IMessageItem) => {
+    const handleNewMessage = (data: IMessageItem) => {
       setMessages((prev) => {
-        if (prev.some((m) => m._id === data._id)) return prev;
-        return [...prev, data];
+        // Replace optimistic placeholder or skip duplicates
+        const filtered = prev.filter(
+          (m) => m._id !== data._id && !(m.isOptimistic && m.text === data.text)
+        );
+        return [...filtered, data];
       });
 
       if (data.senderId === receiverId) {
@@ -86,36 +98,55 @@ export default function ChatPage() {
         window.dispatchEvent(new Event('messages-read-locally'));
       }
 
-      setTimeout(scrollToBottom, 50);
-    });
+      scrollToBottom();
+    };
+
+    channel.bind('new-message', handleNewMessage);
 
     return () => {
-      channel.unbind('new-message');
+      channel.unbind('new-message', handleNewMessage);
       pusherClient.unsubscribe(channelName);
     };
   }, [currentUserId, receiverId]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
+  // Send Message with Optimistic UI
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim() || sending) return;
+    const messageText = inputText.trim();
+    if (!messageText || isSending) return;
 
-    const messageText = inputText;
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage: IMessageItem = {
+      _id: tempId,
+      senderId: currentUserId,
+      receiverId,
+      text: messageText,
+      createdAt: new Date().toISOString(),
+      isOptimistic: true,
+    };
+
+    // Instant local update
     setInputText('');
-    setSending(true);
+    setMessages((prev) => [...prev, optimisticMessage]);
+    scrollToBottom();
 
-    const res = await sendMessageAction(receiverId, messageText, gigId);
-    setSending(false);
+    startSendTransition(async () => {
+      try {
+        const res = await sendMessageAction(receiverId, messageText, gigId);
 
-    if (res.success && res.message) {
-      setMessages((prev) => {
-        if (prev.some((m) => m._id === res.message._id)) return prev;
-        return [...prev, res.message];
-      });
-    }
+        if (res.success && res.message) {
+          setMessages((prev) =>
+            prev.map((msg) => (msg._id === tempId ? res.message : msg))
+          );
+        } else {
+          // Revert optimistic update on failure
+          setMessages((prev) => prev.filter((msg) => msg._id !== tempId));
+        }
+      } catch (err) {
+        console.error('Error sending message:', err);
+        setMessages((prev) => prev.filter((msg) => msg._id !== tempId));
+      }
+    });
   };
 
   return (
@@ -131,7 +162,9 @@ export default function ChatPage() {
                 {otherUser?.name ? otherUser.name.charAt(0).toUpperCase() : 'U'}
               </div>
               <div>
-                <h3 className="text-sm font-bold text-gray-900">{otherUser?.name || 'User'}</h3>
+                <h3 className="text-sm font-bold text-gray-900">
+                  {otherUser?.name || 'User'}
+                </h3>
                 <span className="text-[11px] font-medium text-emerald-600">● Live Chat</span>
               </div>
             </div>
@@ -139,7 +172,7 @@ export default function ChatPage() {
             {gigId && (
               <Link
                 href={`/gigs/${gigId}`}
-                className="rounded-xl border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-black transition"
+                className="rounded-xl border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:border-black"
               >
                 View Gig &nearr;
               </Link>
@@ -173,15 +206,17 @@ export default function ChatPage() {
                         isMine
                           ? 'bg-[#178f23] text-white rounded-br-xs'
                           : 'bg-gray-100 text-gray-900 rounded-bl-xs'
-                      }`}
+                      } ${msg.isOptimistic ? 'opacity-70' : 'opacity-100'}`}
                     >
                       {msg.text}
                     </div>
                     <span className="mt-1 text-[10px] text-gray-400">
-                      {new Date(msg.createdAt).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {msg.isOptimistic
+                        ? 'Sending...'
+                        : new Date(msg.createdAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                     </span>
                   </div>
                 );
@@ -198,14 +233,14 @@ export default function ChatPage() {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Write a message..."
-                className="flex-1 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-black focus:border-black focus:bg-white focus:outline-none"
+                className="flex-1 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-black transition focus:border-black focus:bg-white focus:outline-none"
               />
               <button
                 type="submit"
-                disabled={sending || !inputText.trim()}
-                className="rounded-2xl bg-black px-6 py-3 text-xs font-bold text-white transition hover:bg-gray-800 disabled:opacity-50 cursor-pointer"
+                disabled={isSending || !inputText.trim()}
+                className="rounded-2xl bg-black px-6 py-3 text-xs font-bold text-white transition hover:bg-gray-800 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
               >
-                {sending ? 'Sending...' : 'Send'}
+                {isSending ? 'Sending...' : 'Send'}
               </button>
             </div>
           </form>
