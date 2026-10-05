@@ -11,6 +11,7 @@ export interface IUser {
   bio?: string;
   skills: string[];
   hourlyRate?: number;
+  lastActiveAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +27,10 @@ const UserSchema = new Schema<IUser>(
     skills: { type: [String], default: [] },
     hourlyRate: { type: Number, min: 0 },
     avatar: { type: String, default: '' },
+    lastActiveAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
   { timestamps: true }
 );
