@@ -15,6 +15,7 @@ export default function FreelancerDashboardLayout({
     { name: 'My Gigs', href: '/dashboard/freelancer/gigs' },
     { name: 'Orders', href: '/dashboard/freelancer/orders' },
     { name: 'Profile Settings', href: '/dashboard/freelancer/profile' },
+    { name: 'Messages', href: '/dashboard/freelancer/messages' },
   ];
 
   return (
@@ -30,28 +31,7 @@ export default function FreelancerDashboardLayout({
               Seller Dashboard
             </span>
           </div>
-           
-          {/* multi line comment using  Remove Navbar profile view button and sign out butoon */}
-
-          { /*<div className="flex items-center gap-4">
-            
-            <Link
-              href="/freelancers/me"
-              target="_blank"
-              className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-black hover:text-black"
-            >
-              <span>View Public Profile</span>
-              <span className="text-gray-400">↗</span>
-            </Link>
-
-            <Link
-              href="/api/auth/signout"
-              className="text-xs font-medium text-gray-500 hover:text-red-600 transition"
-            >
-              Sign Out
-            </Link>
-          </div>*/}
-        </div> *
+        </div>
 
         {/* 2. Sub-Navigation Tabs */}
         <div className="border-t border-gray-100 bg-white">
