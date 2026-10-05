@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import UserActivityTracker from "@/components/UserActivityTracker";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -21,6 +22,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="font-sans min-h-full flex flex-col bg-gray-50 text-gray-900">
+        {/* User online status background tracker */}
+        <UserActivityTracker />
         {children}
       </body>
     </html>
