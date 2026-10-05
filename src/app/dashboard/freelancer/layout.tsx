@@ -15,7 +15,7 @@ export default function FreelancerDashboardLayout({
     { name: 'My Gigs', href: '/dashboard/freelancer/gigs' },
     { name: 'Orders', href: '/dashboard/freelancer/orders' },
     { name: 'Profile Settings', href: '/dashboard/freelancer/profile' },
-    { name: 'Messages', href: '/inbox' },
+    { name: 'Messages', href: '/dashboard/freelancer/messages' },
   ];
 
   return (
